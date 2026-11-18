@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("YaaraFramesGifts")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+39c011b625ade80f648850ff19936da3eee0321e")]
 [assembly: System.Reflection.AssemblyProductAttribute("YaaraFramesGifts")]
 [assembly: System.Reflection.AssemblyTitleAttribute("YaaraFramesGifts")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

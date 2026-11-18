@@ -1,5 +1,5 @@
 ﻿@page "/categories"
-@inject ProductCatalog ProductCatalog
+@inject IYaaraApiClient Api
 
 <PageTitle>Gift Categories | Yaara Frames &amp; Gifts</PageTitle>
 
@@ -11,15 +11,65 @@
         <span class="categories-intro-ornament" aria-hidden="true">✦</span>
     </div>
 
+    @if (isLoading)
+    {
+        <p class="eyebrow section-wrap" role="status">Gathering our thoughtful collections…</p>
+    }
+    else if (!string.IsNullOrWhiteSpace(loadError))
+    {
+        <p class="eyebrow section-wrap" role="alert">@loadError</p>
+    }
+    else if (categories.Count == 0)
+    {
+        <p class="eyebrow section-wrap">New collections are on their way. Please check back soon.</p>
+    }
+    else
+    {
     <div class="categories-page-grid section-wrap">
-        @foreach (var category in ProductCatalog.Categories)
+        @foreach (var category in categories)
         {
-            <ShopCategoryCard Category="category" @key="category.Id" />
+            <ShopCategoryCard Category="category" ImageUrl="@GetCategoryImage(category)" @key="category.Slug" />
         }
     </div>
+    }
 
     <div class="categories-page-cta">
         <p>Still choosing? You can browse all our lovely finds.</p>
         <a class="button button-dark" href="/shop">Shop all gifts <span aria-hidden="true">↗</span></a>
     </div>
 </section>
+
+@code {
+    private IReadOnlyList<CategoryDto> categories = [];
+    private IReadOnlyList<ProductDto> products = [];
+    private bool isLoading = true;
+    private string? loadError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var categoriesTask = Api.GetCategoriesAsync();
+            var productsTask = Api.GetProductsAsync();
+            await Task.WhenAll(categoriesTask, productsTask);
+            categories = await categoriesTask;
+            products = await productsTask;
+        }
+        catch (YaaraApiException exception)
+        {
+            loadError = exception.Message;
+        }
+        catch (HttpRequestException)
+        {
+            loadError = "We couldn't reach the shop just now. Please try again.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private string? GetCategoryImage(CategoryDto category) =>
+        products.FirstOrDefault(product =>
+            string.Equals(product.CategorySlug, category.Slug, StringComparison.OrdinalIgnoreCase))?.ImageUrl;
+}

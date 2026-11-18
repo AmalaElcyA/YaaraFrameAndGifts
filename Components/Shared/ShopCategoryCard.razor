@@ -1,8 +1,11 @@
-﻿@using YaaraFramesGifts.Models
+@using YaaraFramesGifts.DTOs
 
-<a class="shop-category-card" href="@($"/shop?category={Uri.EscapeDataString(Category.Id)}")"
+<a class="shop-category-card" href="@($"/shop?category={Uri.EscapeDataString(Category.Slug)}")"
    aria-label="@($"Explore {Category.Name}")">
-    <img src="@Category.ImageUrl" alt="" loading="lazy" />
+    @if (!string.IsNullOrWhiteSpace(ImageUrl))
+    {
+        <img src="@ImageUrl" alt="" loading="lazy" />
+    }
     <span class="shop-category-shade"></span>
     <span class="shop-category-icon" aria-hidden="true">
         <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.25">
@@ -19,5 +22,8 @@
 
 @code {
     [Parameter, EditorRequired]
-    public Category Category { get; set; } = default!;
+    public CategoryDto Category { get; set; } = default!;
+
+    [Parameter]
+    public string? ImageUrl { get; set; }
 }

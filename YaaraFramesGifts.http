@@ -1,0 +1,207 @@
+@baseUrl = http://localhost:5029
+
+### List categories
+GET {{baseUrl}}/api/categories
+
+### Get a category
+GET {{baseUrl}}/api/categories/personalized
+
+### Create a category
+# @name createCategory
+POST {{baseUrl}}/api/categories
+Content-Type: application/json
+
+{
+  "slug": "api-test-{{$guid}}",
+  "name": "API Test Gifts",
+  "description": "A temporary category for testing the catalog API.",
+  "icon": "gift",
+  "accentColor": "#B86F68"
+}
+
+###
+@categorySlug = {{createCategory.response.body.$.slug}}
+
+### Update a category
+PUT {{baseUrl}}/api/categories/{{categorySlug}}
+Content-Type: application/json
+
+{
+  "name": "Updated API Test Gifts",
+  "description": "Updated category details.",
+  "icon": "heart",
+  "accentColor": "#A77B5A"
+}
+
+### Category slug conflict when creating a duplicate
+POST {{baseUrl}}/api/categories
+Content-Type: application/json
+
+{
+  "slug": "personalized",
+  "name": "Duplicate Category"
+}
+
+### Category deletion conflict when products exist
+DELETE {{baseUrl}}/api/categories/personalized
+
+### Category not found
+GET {{baseUrl}}/api/categories/not-a-category
+
+### List products
+GET {{baseUrl}}/api/products
+
+### Filter products by category
+GET {{baseUrl}}/api/products?category=personalized
+
+### Filter products by category and badge
+GET {{baseUrl}}/api/products?category=handmade&badge=New
+
+### List featured products
+GET {{baseUrl}}/api/products/featured
+
+### Get a product
+GET {{baseUrl}}/api/products/1
+
+### Product not found
+GET {{baseUrl}}/api/products/999999
+
+### Create a product in the test category
+# @name createProduct
+POST {{baseUrl}}/api/products
+Content-Type: application/json
+
+{
+  "name": "API Test Photo Frame",
+  "description": "A test product for the catalog API.",
+  "price": 1299,
+  "imageUrl": "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=800&q=82",
+  "categorySlug": "{{categorySlug}}",
+  "badge": "Recommended",
+  "isPersonalized": true
+}
+
+###
+@productId = {{createProduct.response.body.$.id}}
+
+### Update the test product
+PUT {{baseUrl}}/api/products/{{productId}}
+Content-Type: application/json
+
+{
+  "name": "Updated API Test Photo Frame",
+  "description": "Updated test product details.",
+  "price": 1399,
+  "imageUrl": "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=800&q=82",
+  "categorySlug": "{{categorySlug}}",
+  "badge": "New",
+  "isPersonalized": true
+}
+
+### Invalid product badge
+POST {{baseUrl}}/api/products
+Content-Type: application/json
+
+{
+  "name": "Invalid Badge Product",
+  "description": "This request should fail validation.",
+  "price": 999,
+  "imageUrl": "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=800&q=82",
+  "categorySlug": "{{categorySlug}}",
+  "badge": "Featured",
+  "isPersonalized": false
+}
+
+### Invalid product category
+POST {{baseUrl}}/api/products
+Content-Type: application/json
+
+{
+  "name": "Invalid Category Product",
+  "description": "This request should fail validation.",
+  "price": 999,
+  "imageUrl": "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=800&q=82",
+  "categorySlug": "missing-category",
+  "badge": null,
+  "isPersonalized": false
+}
+
+### Delete the test product
+DELETE {{baseUrl}}/api/products/{{productId}}
+
+### Delete the test category
+DELETE {{baseUrl}}/api/categories/{{categorySlug}}
+
+### Create an anonymous cart
+# @name createCart
+POST {{baseUrl}}/api/cart
+
+###
+@cartId = {{createCart.response.body.$.id}}
+
+### Get a cart without an ID (creates a cart and returns X-Cart-Id)
+GET {{baseUrl}}/api/cart
+
+### Get the cart
+GET {{baseUrl}}/api/cart
+X-Cart-Id: {{cartId}}
+
+### Add a product
+POST {{baseUrl}}/api/cart/items
+X-Cart-Id: {{cartId}}
+Content-Type: application/json
+
+{
+  "productId": 1,
+  "quantity": 2
+}
+
+### Add the same product again (increases its quantity)
+POST {{baseUrl}}/api/cart/items
+X-Cart-Id: {{cartId}}
+Content-Type: application/json
+
+{
+  "productId": 1,
+  "quantity": 1
+}
+
+### Set a product quantity
+PUT {{baseUrl}}/api/cart/items/1
+X-Cart-Id: {{cartId}}
+Content-Type: application/json
+
+{
+  "quantity": 3
+}
+
+### Remove a product
+DELETE {{baseUrl}}/api/cart/items/1
+X-Cart-Id: {{cartId}}
+
+### Invalid quantity
+PUT {{baseUrl}}/api/cart/items/1
+X-Cart-Id: {{cartId}}
+Content-Type: application/json
+
+{
+  "quantity": 100
+}
+
+### Invalid product ID
+POST {{baseUrl}}/api/cart/items
+X-Cart-Id: {{cartId}}
+Content-Type: application/json
+
+{
+  "productId": 999999,
+  "quantity": 1
+}
+
+### Clear all items
+DELETE {{baseUrl}}/api/cart
+X-Cart-Id: {{cartId}}
+
+### Missing cart item
+DELETE {{baseUrl}}/api/cart/items/1
+X-Cart-Id: {{cartId}}

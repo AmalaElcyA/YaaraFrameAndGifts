@@ -1,6 +1,5 @@
 ﻿@page "/shop"
-@using YaaraFramesGifts.Models
-@inject ProductCatalog ProductCatalog
+@inject IYaaraApiClient Api
 
 <PageTitle>Find Your Perfect Gift | Yaara Frames &amp; Gifts</PageTitle>
 
@@ -11,65 +10,143 @@
 
     <nav class="shop-category-filters" aria-label="Filter gifts by category">
         <a class="shop-filter-chip @(string.IsNullOrWhiteSpace(CategoryId) ? "active" : "")"
-           href="/shop"
+           href="@BuildShopUrl(null, Badge)"
            aria-current="@(string.IsNullOrWhiteSpace(CategoryId) ? "page" : null)">All Products</a>
-        @foreach (var category in ProductCatalog.Categories)
+        @foreach (var category in categories)
         {
-            <a class="shop-filter-chip @(string.Equals(CategoryId, category.Id, StringComparison.OrdinalIgnoreCase) ? "active" : "")"
-               href="@($"/shop?category={Uri.EscapeDataString(category.Id)}")"
-               aria-current="@(string.Equals(CategoryId, category.Id, StringComparison.OrdinalIgnoreCase) ? "page" : null)">@category.Name</a>
+            <a class="shop-filter-chip @(string.Equals(CategoryId, category.Slug, StringComparison.OrdinalIgnoreCase) ? "active" : "")"
+               href="@BuildShopUrl(category.Slug, Badge)"
+               aria-current="@(string.Equals(CategoryId, category.Slug, StringComparison.OrdinalIgnoreCase) ? "page" : null)">@category.Name</a>
         }
     </nav>
 
-    <div class="shop-results-heading" aria-live="polite">
-        @if (SelectedCategory is not null)
+    <nav class="shop-category-filters" aria-label="Filter gifts by badge">
+        <a class="shop-filter-chip @(string.IsNullOrWhiteSpace(Badge) ? "active" : "")"
+           href="@BuildShopUrl(CategoryId, null)"
+           aria-current="@(string.IsNullOrWhiteSpace(Badge) ? "page" : null)">All Finds</a>
+        @foreach (var badge in badgeOptions)
         {
-            <p>Showing <strong>@SelectedCategory.Name</strong></p>
+            <a class="shop-filter-chip @(string.Equals(Badge, badge, StringComparison.OrdinalIgnoreCase) ? "active" : "")"
+               href="@BuildShopUrl(CategoryId, badge)"
+               aria-current="@(string.Equals(Badge, badge, StringComparison.OrdinalIgnoreCase) ? "page" : null)">@badge</a>
         }
-        else if (!string.IsNullOrWhiteSpace(CategoryId))
-        {
-            <p>That collection isn't available yet.</p>
-        }
-        else
-        {
-            <p>Thoughtful finds, chosen with love.</p>
-        }
-        <span>@FilteredProducts.Count() @(FilteredProducts.Count() == 1 ? "lovely find" : "lovely finds")</span>
-    </div>
+    </nav>
 
-    @if (FilteredProducts.Any())
+    @if (isLoading)
     {
-        <div class="featured-product-grid shop-product-grid">
-            @foreach (var product in FilteredProducts)
-            {
-                <FeaturedProductCard Product="product" @key="product.Id" />
-            }
+        <p class="shop-results-heading" role="status">Finding thoughtful gifts for you…</p>
+    }
+    else if (!string.IsNullOrWhiteSpace(loadError))
+    {
+        <div class="empty-search shop-empty" role="alert">
+            <h2>We couldn't load the collection just now.</h2>
+            <p>@loadError</p>
+            <a class="button button-outline" href="/shop">Try Again</a>
         </div>
     }
     else
     {
-        <div class="empty-search shop-empty">
-            <svg class="empty-shop-illustration" viewBox="0 0 120 100" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                <path d="M25 35h70l-5 55H30l-5-55Z" />
-                <path d="M42 37V26a18 18 0 0 1 36 0v11" />
-                <path d="M60 52c-5-9-17-5-14 3 2 6 14 14 14 14s12-8 14-14c3-8-9-12-14-3Z" />
-                <path d="M16 19c5 0 8 3 8 8M104 20c-5 0-8 3-8 8" />
-            </svg>
-            <h2>We couldn't find gifts in that collection just yet.</h2>
-            <p>Browse all the thoughtful gifts and find something lovely.</p>
-            <a class="button button-outline" href="/shop">Show All Products</a>
+        <div class="shop-results-heading" aria-live="polite">
+            @if (SelectedCategory is not null)
+            {
+                <p>Showing <strong>@SelectedCategory.Name</strong>@(string.IsNullOrWhiteSpace(Badge) ? "" : $" · {Badge}")</p>
+            }
+            else if (!string.IsNullOrWhiteSpace(CategoryId))
+            {
+                <p>That collection isn't available yet.</p>
+            }
+            else if (!string.IsNullOrWhiteSpace(Badge))
+            {
+                <p>Showing <strong>@Badge</strong> gifts</p>
+            }
+            else
+            {
+                <p>Thoughtful finds, chosen with love.</p>
+            }
+            <span>@products.Count @(products.Count == 1 ? "lovely find" : "lovely finds")</span>
         </div>
+
+        @if (products.Count > 0)
+        {
+            <div class="featured-product-grid shop-product-grid">
+                @foreach (var product in products)
+                {
+                    <FeaturedProductCard Product="product" @key="product.Id" />
+                }
+            </div>
+        }
+        else
+        {
+            <div class="empty-search shop-empty">
+                <svg class="empty-shop-illustration" viewBox="0 0 120 100" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                    <path d="M25 35h70l-5 55H30l-5-55Z" />
+                    <path d="M42 37V26a18 18 0 0 1 36 0v11" />
+                    <path d="M60 52c-5-9-17-5-14 3 2 6 14 14 14 14s12-8 14-14c3-8-9-12-14-3Z" />
+                    <path d="M16 19c5 0 8 3 8 8M104 20c-5 0-8 3-8 8" />
+                </svg>
+                <h2>We couldn't find gifts in that collection just yet.</h2>
+                <p>Browse all the thoughtful gifts and find something lovely.</p>
+                <a class="button button-outline" href="/shop">Show All Products</a>
+            </div>
+        }
     }
 </section>
 
 @code {
+    private static readonly string[] badgeOptions = ["New", "Popular", "Recommended"];
+    private IReadOnlyList<CategoryDto> categories = [];
+    private IReadOnlyList<ProductDto> products = [];
+    private bool isLoading = true;
+    private string? loadError;
+
     [SupplyParameterFromQuery(Name = "category")]
     public string? CategoryId { get; set; }
 
-    private Category? SelectedCategory => ProductCatalog.Categories.FirstOrDefault(category =>
-        string.Equals(category.Id, CategoryId, StringComparison.OrdinalIgnoreCase));
+    [SupplyParameterFromQuery(Name = "badge")]
+    public string? Badge { get; set; }
 
-    private IEnumerable<Product> FilteredProducts => ProductCatalog.Products.Where(product =>
-        string.IsNullOrWhiteSpace(CategoryId) ||
-        string.Equals(product.Category.Id, CategoryId, StringComparison.OrdinalIgnoreCase));
+    private CategoryDto? SelectedCategory => categories.FirstOrDefault(category =>
+        string.Equals(category.Slug, CategoryId, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnParametersSetAsync()
+    {
+        isLoading = true;
+        loadError = null;
+        try
+        {
+            var categoriesTask = Api.GetCategoriesAsync();
+            var productsTask = Api.GetProductsAsync(CategoryId, Badge);
+            await Task.WhenAll(categoriesTask, productsTask);
+            categories = await categoriesTask;
+            products = await productsTask;
+        }
+        catch (YaaraApiException exception)
+        {
+            loadError = exception.Message;
+        }
+        catch (HttpRequestException)
+        {
+            loadError = "We couldn't reach the shop just now. Please try again.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private static string BuildShopUrl(string? category, string? badge)
+    {
+        var query = new List<string>();
+        if (!string.IsNullOrWhiteSpace(category))
+        {
+            query.Add($"category={Uri.EscapeDataString(category)}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(badge))
+        {
+            query.Add($"badge={Uri.EscapeDataString(badge)}");
+        }
+
+        return query.Count == 0 ? "/shop" : $"/shop?{string.Join("&", query)}";
+    }
 }

@@ -1,6 +1,5 @@
 ﻿@page "/"
-@using YaaraFramesGifts.Models
-@inject ProductCatalog ProductCatalog
+@inject IYaaraApiClient Api
 
 <PageTitle>Yaara Frames &amp; Gifts | Gifts Made With Love</PageTitle>
 
@@ -36,12 +35,27 @@
         </div>
         <a class="text-link" href="/categories">Browse by category <span aria-hidden="true">↗</span></a>
     </div>
+    @if (isLoading)
+    {
+        <p class="eyebrow" role="status">Gathering a few thoughtful ideas…</p>
+    }
+    else if (!string.IsNullOrWhiteSpace(loadError))
+    {
+        <p class="eyebrow" role="alert">@loadError</p>
+    }
+    else if (categories.Count == 0)
+    {
+        <p class="eyebrow">New collections are on their way. Please check back soon.</p>
+    }
+    else
+    {
     <div class="homepage-category-grid">
-        @foreach (var category in ProductCatalog.Categories)
+        @foreach (var category in categories)
         {
-            <ShopCategoryCard Category="category" @key="category.Id" />
+            <ShopCategoryCard Category="category" ImageUrl="@GetCategoryImage(category)" @key="category.Slug" />
         }
     </div>
+    }
 </section>
 
 <section class="featured-section section-wrap" id="shop">
@@ -52,12 +66,27 @@
         </div>
         <a class="text-link" href="/shop">See all the lovely things <span aria-hidden="true">↗</span></a>
     </div>
+    @if (isLoading)
+    {
+        <p class="eyebrow" role="status">Finding a few lovely gifts…</p>
+    }
+    else if (!string.IsNullOrWhiteSpace(loadError))
+    {
+        <p class="eyebrow" role="alert">@loadError</p>
+    }
+    else if (featuredProducts.Count == 0)
+    {
+        <p class="eyebrow">Lovely finds are being prepared. Please check back soon.</p>
+    }
+    else
+    {
     <div class="featured-product-grid">
-        @foreach (var product in ProductCatalog.Products.Take(4))
+        @foreach (var product in featuredProducts)
         {
             <FeaturedProductCard Product="product" @key="product.Id" />
         }
     </div>
+    }
 </section>
 
 <section class="brand-promise section-wrap" id="brand-promise" aria-labelledby="brand-promise-title">
@@ -96,6 +125,45 @@
         </div>
     </div>
 </section>
+
+@code {
+    private IReadOnlyList<CategoryDto> categories = [];
+    private IReadOnlyList<ProductDto> products = [];
+    private IReadOnlyList<ProductDto> featuredProducts = [];
+    private bool isLoading = true;
+    private string? loadError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var categoriesTask = Api.GetCategoriesAsync();
+            var productsTask = Api.GetProductsAsync();
+            var featuredTask = Api.GetFeaturedProductsAsync();
+            await Task.WhenAll(categoriesTask, productsTask, featuredTask);
+            categories = await categoriesTask;
+            products = await productsTask;
+            featuredProducts = await featuredTask;
+        }
+        catch (YaaraApiException exception)
+        {
+            loadError = exception.Message;
+        }
+        catch (HttpRequestException)
+        {
+            loadError = "We couldn't reach the shop just now. Please try again.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private string? GetCategoryImage(CategoryDto category) =>
+        products.FirstOrDefault(product =>
+            string.Equals(product.CategorySlug, category.Slug, StringComparison.OrdinalIgnoreCase))?.ImageUrl
+        ?? featuredProducts.FirstOrDefault()?.ImageUrl;
+}
 
 <section class="homepage-final-cta">
     <div class="homepage-final-cta-inner">

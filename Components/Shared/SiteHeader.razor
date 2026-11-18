@@ -1,5 +1,5 @@
 ﻿@implements IAsyncDisposable
-@inject CartService Cart
+@inject CartSession Cart
 @inject IJSRuntime JS
 
 <div class="announcement-bar">
@@ -28,6 +28,10 @@
             </svg>
             <span class="cart-label">Your bag</span>
             <span class="cart-count" aria-live="polite" aria-atomic="true">@Cart.ItemCount</span>
+            @if (!string.IsNullOrWhiteSpace(cartInitializationError))
+            {
+                <span class="visually-hidden" role="status">@cartInitializationError</span>
+            }
         </a>
 
         <button @ref="menuToggleButton" class="mobile-menu-toggle"
@@ -84,11 +88,28 @@
     private DotNetObjectReference<SiteHeader>? dotNetReference;
     private bool isMenuOpen;
     private bool wasMenuOpen;
+    private string? cartInitializationError;
 
     protected override void OnInitialized() => Cart.Changed += OnCartChanged;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (firstRender)
+        {
+            try
+            {
+                await Cart.InitializeAsync();
+            }
+            catch (YaaraApiException exception)
+            {
+                cartInitializationError = exception.Message;
+            }
+            catch (HttpRequestException)
+            {
+                cartInitializationError = "Your bag is temporarily unavailable.";
+            }
+        }
+
         jsModule ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/mobile-nav.js");
 
         if (isMenuOpen && !wasMenuOpen)
@@ -105,7 +126,11 @@
         wasMenuOpen = isMenuOpen;
     }
 
-    private void OnCartChanged() => _ = InvokeAsync(StateHasChanged);
+    private void OnCartChanged()
+    {
+        cartInitializationError = null;
+        _ = InvokeAsync(StateHasChanged);
+    }
     private void ToggleMenu() => isMenuOpen = !isMenuOpen;
     private void CloseMobileMenu() => isMenuOpen = false;
 

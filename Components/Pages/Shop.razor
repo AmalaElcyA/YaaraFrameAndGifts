@@ -1,0 +1,75 @@
+﻿@page "/shop"
+@using YaaraFramesGifts.Models
+@inject ProductCatalog ProductCatalog
+
+<PageTitle>Find Your Perfect Gift | Yaara Frames &amp; Gifts</PageTitle>
+
+<section class="shop-page section-wrap">
+    <p class="eyebrow">A thoughtful something for every someone</p>
+    <h1>Find Your Perfect Gift</h1>
+    <p class="shop-page-intro">Browse keepsakes, handmade treasures, and personal touches made to turn their moment into a memory.</p>
+
+    <nav class="shop-category-filters" aria-label="Filter gifts by category">
+        <a class="shop-filter-chip @(string.IsNullOrWhiteSpace(CategoryId) ? "active" : "")"
+           href="/shop"
+           aria-current="@(string.IsNullOrWhiteSpace(CategoryId) ? "page" : null)">All Products</a>
+        @foreach (var category in ProductCatalog.Categories)
+        {
+            <a class="shop-filter-chip @(string.Equals(CategoryId, category.Id, StringComparison.OrdinalIgnoreCase) ? "active" : "")"
+               href="@($"/shop?category={Uri.EscapeDataString(category.Id)}")"
+               aria-current="@(string.Equals(CategoryId, category.Id, StringComparison.OrdinalIgnoreCase) ? "page" : null)">@category.Name</a>
+        }
+    </nav>
+
+    <div class="shop-results-heading" aria-live="polite">
+        @if (SelectedCategory is not null)
+        {
+            <p>Showing <strong>@SelectedCategory.Name</strong></p>
+        }
+        else if (!string.IsNullOrWhiteSpace(CategoryId))
+        {
+            <p>That collection isn't available yet.</p>
+        }
+        else
+        {
+            <p>Thoughtful finds, chosen with love.</p>
+        }
+        <span>@FilteredProducts.Count() @(FilteredProducts.Count() == 1 ? "lovely find" : "lovely finds")</span>
+    </div>
+
+    @if (FilteredProducts.Any())
+    {
+        <div class="featured-product-grid shop-product-grid">
+            @foreach (var product in FilteredProducts)
+            {
+                <FeaturedProductCard Product="product" @key="product.Id" />
+            }
+        </div>
+    }
+    else
+    {
+        <div class="empty-search shop-empty">
+            <svg class="empty-shop-illustration" viewBox="0 0 120 100" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                <path d="M25 35h70l-5 55H30l-5-55Z" />
+                <path d="M42 37V26a18 18 0 0 1 36 0v11" />
+                <path d="M60 52c-5-9-17-5-14 3 2 6 14 14 14 14s12-8 14-14c3-8-9-12-14-3Z" />
+                <path d="M16 19c5 0 8 3 8 8M104 20c-5 0-8 3-8 8" />
+            </svg>
+            <h2>We couldn't find gifts in that collection just yet.</h2>
+            <p>Browse all the thoughtful gifts and find something lovely.</p>
+            <a class="button button-outline" href="/shop">Show All Products</a>
+        </div>
+    }
+</section>
+
+@code {
+    [SupplyParameterFromQuery(Name = "category")]
+    public string? CategoryId { get; set; }
+
+    private Category? SelectedCategory => ProductCatalog.Categories.FirstOrDefault(category =>
+        string.Equals(category.Id, CategoryId, StringComparison.OrdinalIgnoreCase));
+
+    private IEnumerable<Product> FilteredProducts => ProductCatalog.Products.Where(product =>
+        string.IsNullOrWhiteSpace(CategoryId) ||
+        string.Equals(product.Category.Id, CategoryId, StringComparison.OrdinalIgnoreCase));
+}

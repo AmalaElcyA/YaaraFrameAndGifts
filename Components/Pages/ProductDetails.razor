@@ -1,0 +1,144 @@
+﻿@page "/product/{ProductId}"
+@using System.Globalization
+@using YaaraFramesGifts.Models
+@inject ProductCatalog ProductCatalog
+@inject CartService Cart
+
+<PageTitle>@(Product is null ? "Gift not found" : $"{Product.Name} | Yaara Frames & Gifts")</PageTitle>
+
+@if (Product is { } product)
+{
+    <section class="product-detail-page section-wrap">
+        <a class="product-detail-back" href="@($"/shop?category={Uri.EscapeDataString(product.Category.Id)}")">← Continue Shopping</a>
+        <div class="product-detail-layout">
+            <div class="product-detail-gallery">
+                <div class="product-detail-image">
+                    <img src="@(SelectedImageUrl ?? product.ImageUrl)" alt="@product.Name" />
+                    @if (!string.IsNullOrWhiteSpace(product.Badge))
+                    {
+                        <span class="featured-product-badge">@product.Badge</span>
+                    }
+                </div>
+                @if (GalleryImages.Count > 1)
+                {
+                    <div class="product-gallery-thumbnails" role="group" aria-label="Product image gallery">
+                        @for (var index = 0; index < GalleryImages.Count; index++)
+                        {
+                            var image = GalleryImages[index];
+                            <button class="product-gallery-thumbnail @(SelectedImageUrl == image ? "active" : "")"
+                                    aria-label="@($"View product image {index + 1} of {GalleryImages.Count} for {product.Name}")"
+                                    aria-pressed="@(SelectedImageUrl == image)"
+                                    @onclick="() => SelectImage(image)">
+                                <img src="@image" alt="" loading="lazy" />
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
+
+            <div class="product-detail-copy">
+                <p class="eyebrow">@product.Category.Name</p>
+                <h1>@product.Name</h1>
+                <p class="product-detail-price">₹@product.Price.ToString("N0", CultureInfo.GetCultureInfo("en-IN"))</p>
+                <p class="product-detail-description">@product.Description</p>
+
+                <p class="product-availability @(product.IsAvailable ? "is-available" : "is-unavailable")">
+                    <span aria-hidden="true">@(product.IsAvailable ? "✓" : "•")</span>
+                    @(product.IsAvailable ? "In stock — ready to make their day" : "Currently unavailable")
+                </p>
+
+                @if (product.IsAvailable)
+                {
+                    <div class="product-detail-purchase">
+                        <div class="product-quantity-picker" role="group" aria-label="Choose quantity">
+                            <button aria-label="Decrease quantity" disabled="@(Quantity <= 1)" @onclick="DecreaseQuantity">−</button>
+                            <span aria-live="polite">@Quantity</span>
+                            <button aria-label="Increase quantity" @onclick="IncreaseQuantity">+</button>
+                        </div>
+                        <button class="button button-dark product-detail-add" @onclick="() => AddToCart(product)">
+                            Add to Cart <span aria-hidden="true">+</span>
+                        </button>
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(AddFeedback))
+                {
+                    <p class="product-add-feedback" role="status">
+                        <span>@AddFeedback</span>
+                        <a href="/cart">View your cart <span aria-hidden="true">↗</span></a>
+                    </p>
+                }
+
+                <div class="product-highlights">
+                    <h2>A little more to love</h2>
+                    <ul>
+                        <li><span aria-hidden="true">✦</span> Thoughtfully selected and made with care</li>
+                        <li><span aria-hidden="true">✦</span> Beautifully packaged and ready to gift</li>
+                        <li><span aria-hidden="true">✦</span> A personal touch for moments worth keeping</li>
+                    </ul>
+                </div>
+                <p class="product-detail-note"><span aria-hidden="true">✧</span> Free shipping on orders from ₹999.</p>
+                <a class="product-detail-continue" href="/shop">Continue Shopping <span aria-hidden="true">↗</span></a>
+            </div>
+        </div>
+    </section>
+}
+else
+{
+    <section class="product-detail-missing section-wrap">
+        <span class="product-missing-icon" aria-hidden="true">♡</span>
+        <p class="eyebrow">A little detour</p>
+        <h1>We couldn't find that gift.</h1>
+        <p class="product-detail-description">That keepsake may have wandered off. Browse the collection to find another lovely something.</p>
+        <a class="button button-dark" href="/shop">Browse all gifts <span aria-hidden="true">↗</span></a>
+    </section>
+}
+
+@code {
+    [Parameter]
+    public string ProductId { get; set; } = string.Empty;
+
+    private string? SelectedImageUrl { get; set; }
+    private string? CurrentProductId { get; set; }
+    private int Quantity { get; set; } = 1;
+    private string? AddFeedback { get; set; }
+
+    private Product? Product => ProductCatalog.Products.FirstOrDefault(product =>
+        string.Equals(product.Id, ProductId, StringComparison.OrdinalIgnoreCase));
+
+    private IReadOnlyList<string> GalleryImages => Product is { } product
+        ? new[] { product.ImageUrl }.Concat(product.GalleryImages ?? []).Distinct(StringComparer.OrdinalIgnoreCase).ToArray()
+        : [];
+
+    protected override void OnParametersSet()
+    {
+        if (string.Equals(CurrentProductId, ProductId, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        CurrentProductId = ProductId;
+        SelectedImageUrl = Product?.ImageUrl;
+        Quantity = 1;
+        AddFeedback = null;
+    }
+
+    private void SelectImage(string imageUrl) => SelectedImageUrl = imageUrl;
+    private void IncreaseQuantity() => Quantity++;
+
+    private void DecreaseQuantity()
+    {
+        if (Quantity > 1)
+        {
+            Quantity--;
+        }
+    }
+
+    private void AddToCart(Product product)
+    {
+        Cart.Add(product, Quantity);
+        AddFeedback = Quantity == 1
+            ? $"{product.Name} has been added to your bag."
+            : $"{Quantity} × {product.Name} have been added to your bag.";
+    }
+}

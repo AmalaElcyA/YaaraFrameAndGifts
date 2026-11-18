@@ -1,0 +1,25 @@
+﻿@page "/categories"
+@inject ProductCatalog ProductCatalog
+
+<PageTitle>Gift Categories | Yaara Frames &amp; Gifts</PageTitle>
+
+<section class="categories-page">
+    <div class="categories-page-intro">
+        <p class="eyebrow">A little something for every someone</p>
+        <h1>Find a gift that <em>feels like them.</em></h1>
+        <p>Explore thoughtfully chosen collections, made for the people and moments you want to celebrate.</p>
+        <span class="categories-intro-ornament" aria-hidden="true">✦</span>
+    </div>
+
+    <div class="categories-page-grid section-wrap">
+        @foreach (var category in ProductCatalog.Categories)
+        {
+            <ShopCategoryCard Category="category" @key="category.Id" />
+        }
+    </div>
+
+    <div class="categories-page-cta">
+        <p>Still choosing? You can browse all our lovely finds.</p>
+        <a class="button button-dark" href="/shop">Shop all gifts <span aria-hidden="true">↗</span></a>
+    </div>
+</section>

@@ -1,0 +1,126 @@
+﻿@page "/cart"
+@using System.Globalization
+@implements IDisposable
+@inject CartService Cart
+
+<PageTitle>Your gift basket | Yaara Frames &amp; Gifts</PageTitle>
+
+<section class="cart-page section-wrap">
+    <p class="eyebrow">A little joy is on its way</p>
+    <h1>Your gift basket <span>(@Cart.ItemCount @(Cart.ItemCount == 1 ? "item" : "items"))</span></h1>
+
+    @if (Cart.Items.Count == 0)
+    {
+        <div class="cart-page-empty">
+            <svg class="empty-cart-illustration" viewBox="0 0 120 108" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                <path d="M22 35h76l-6 63H28l-6-63Z" />
+                <path d="M43 37V25a17 17 0 0 1 34 0v12" />
+                <path d="M60 54c-5-9-17-5-14 3 2 6 14 14 14 14s12-8 14-14c3-8-9-12-14-3Z" />
+                <path d="M16 20c5 0 8 3 8 8m72-8c-5 0-8 3-8 8" />
+            </svg>
+            <p class="eyebrow">A little something is missing</p>
+            <h2>Your gift basket is waiting!</h2>
+            <p>Fill it with something thoughtful for someone who makes your days special.</p>
+            <a class="button button-dark" href="/shop">Start Shopping <span aria-hidden="true">↗</span></a>
+        </div>
+    }
+    else
+    {
+        <div class="cart-page-layout">
+            <div class="cart-page-items" role="list" aria-label="Items in your gift basket">
+                @foreach (var item in Cart.Items)
+                {
+                    <article class="cart-page-item" role="listitem" @key="item.Product.Id">
+                        <a class="cart-page-thumbnail" href="@($"/product/{Uri.EscapeDataString(item.Product.Id)}")"
+                           aria-label="@($"View {item.Product.Name} details")">
+                            <img src="@item.Product.ImageUrl" alt="@item.Product.Name" />
+                        </a>
+                        <div class="cart-page-item-info">
+                            <span class="product-category">@item.Product.Category.Name</span>
+                            <h2><a href="@($"/product/{Uri.EscapeDataString(item.Product.Id)}")">@item.Product.Name</a></h2>
+                            <p>@item.Product.Description</p>
+                            <span class="cart-page-unit-price">₹@item.Product.Price.ToString("N0", CultureInfo.GetCultureInfo("en-IN")) each</span>
+                            <div class="cart-page-quantity" role="group" aria-label="@($"Quantity for {item.Product.Name}")">
+                                <button aria-label="Decrease quantity" disabled="@(item.Quantity <= 1)"
+                                        @onclick="() => Cart.Decrease(item.Product.Id)">−</button>
+                                <span aria-live="polite">@item.Quantity</span>
+                                <button aria-label="Increase quantity" @onclick="() => Cart.Increase(item.Product.Id)">+</button>
+                            </div>
+                        </div>
+                        <div class="cart-page-item-actions">
+                            <div class="cart-page-line-total">
+                                <span>Line total</span>
+                                <strong>₹@((item.Product.Price * item.Quantity).ToString("N0", CultureInfo.GetCultureInfo("en-IN")))</strong>
+                            </div>
+                            <button class="cart-page-remove" aria-label="@($"Remove {item.Product.Name} from your gift basket")"
+                                    @onclick="() => Cart.Remove(item.Product.Id)">
+                                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                                    <path d="M3 5h14M8 5V3h4v2m3 0-.8 12H5.8L5 5m3 3v6m4-6v6" />
+                                </svg>
+                                Remove
+                            </button>
+                        </div>
+                    </article>
+                }
+            </div>
+
+            <aside class="cart-page-summary" aria-label="Order summary">
+                <h2>A little order summary</h2>
+                <p class="cart-summary-item-count">@Cart.ItemCount @(Cart.ItemCount == 1 ? "lovely find" : "lovely finds") in your basket</p>
+
+                @if (Cart.Subtotal < CartService.FreeShippingThreshold)
+                {
+                    <div class="cart-shipping-nudge" role="status">
+                        <p>You’re <strong>₹@ShippingRemaining.ToString("N0", CultureInfo.GetCultureInfo("en-IN"))</strong> away from complimentary delivery.</p>
+                        <div class="cart-shipping-progress" role="progressbar"
+                             aria-label="Progress towards free shipping"
+                             aria-valuemin="0" aria-valuemax="100"
+                             aria-valuenow="@ShippingProgress.ToString("0", CultureInfo.InvariantCulture)">
+                            <span style="width: @($"{ShippingProgress:0}%")"></span>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="cart-shipping-unlocked" role="status">
+                        <span aria-hidden="true">✦</span>
+                        <p>Lovely! You’ve unlocked free shipping.</p>
+                    </div>
+                }
+
+                <div class="cart-summary-row">
+                    <span>Subtotal</span>
+                    <strong>₹@Cart.Subtotal.ToString("N0", CultureInfo.GetCultureInfo("en-IN"))</strong>
+                </div>
+                <div class="cart-summary-row">
+                    <span>Shipping</span>
+                    <strong>@(Cart.Shipping == 0 ? "Complimentary" : $"₹{Cart.Shipping.ToString("N0", CultureInfo.GetCultureInfo("en-IN"))}")</strong>
+                </div>
+                <div class="cart-page-total">
+                    <span>Total</span>
+                    <strong>₹@Cart.Total.ToString("N0", CultureInfo.GetCultureInfo("en-IN"))</strong>
+                </div>
+                <p class="cart-taxes-note">Taxes included. Final delivery details can be confirmed at checkout.</p>
+                <button class="button cart-checkout-button" disabled aria-describedby="checkout-note">
+                    Checkout coming soon
+                </button>
+                <p class="checkout-note" id="checkout-note">We’re preparing a secure checkout experience. No payment will be taken here.</p>
+                <a class="cart-continue-link" href="/shop">Continue Shopping <span aria-hidden="true">↗</span></a>
+            </aside>
+        </div>
+    }
+</section>
+
+@code {
+    private decimal ShippingRemaining => Math.Max(0, CartService.FreeShippingThreshold - Cart.Subtotal);
+
+    private decimal ShippingProgress => Cart.Subtotal == 0
+        ? 0
+        : Math.Min(100, Cart.Subtotal / CartService.FreeShippingThreshold * 100);
+
+    protected override void OnInitialized() => Cart.Changed += OnCartChanged;
+
+    private void OnCartChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Cart.Changed -= OnCartChanged;
+}

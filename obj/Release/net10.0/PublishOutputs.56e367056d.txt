@@ -1,0 +1,7 @@
+C:\Publish\YaaraFramesGifts\YaaraFramesGifts.exe
+C:\Publish\YaaraFramesGifts\appsettings.Development.json
+C:\Publish\YaaraFramesGifts\appsettings.json
+C:\Publish\YaaraFramesGifts\YaaraFramesGifts.dll
+C:\Publish\YaaraFramesGifts\YaaraFramesGifts.runtimeconfig.json
+C:\Publish\YaaraFramesGifts\YaaraFramesGifts.pdb
+C:\Publish\YaaraFramesGifts\YaaraFramesGifts.deps.json

@@ -1,0 +1,32 @@
+﻿@page "/Error"
+@using System.Diagnostics
+
+<PageTitle>Error</PageTitle>
+
+<section class="error-page">
+    <p class="eyebrow">A little hiccup</p>
+    <h1>Something went<br /><em>unexpectedly quiet.</em></h1>
+    <p>We couldn't finish loading that page. Please try again in a moment.</p>
+
+    @if (ShowRequestId)
+    {
+        <p class="request-id"><strong>Request ID:</strong> <code>@RequestId</code></p>
+    }
+
+    <a class="button button-dark" href="/">Back to Yaara <span aria-hidden="true">↗</span></a>
+</section>
+
+@code{
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    [PersistentState]
+    public string? RequestId { get; set; }
+
+    private bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
+
+    protected override void OnInitialized()
+    {
+        RequestId ??= Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
+    }
+}

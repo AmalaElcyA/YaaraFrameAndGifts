@@ -35,35 +35,35 @@ public sealed class ProductCatalog
 
     private static readonly IReadOnlyList<Product> CatalogProducts =
     [
-        new("forever-frame", "The Forever Frame", Keepsakes, "A favourite memory, made part of home.", 1299,
+        new(1, "The Forever Frame", Keepsakes, "A favourite memory, made part of home.", 1299,
             "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=800&q=82", "Popular",
             [
                 "https://images.unsplash.com/photo-1504198322253-cfa87a0ff25f?auto=format&fit=crop&w=800&q=82",
                 "https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?auto=format&fit=crop&w=800&q=82"
             ]),
-        new("little-moments", "Little Moments Box", GiftHampers, "A keepsake box for all the little things.", 1499,
+        new(2, "Little Moments Box", GiftHampers, "A keepsake box for all the little things.", 1499,
             "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=800&q=82", "Recommended",
             [
                 "https://images.unsplash.com/photo-1513201099705-a9746e1e201f?auto=format&fit=crop&w=800&q=82",
                 "https://images.unsplash.com/photo-1513883049090-d0b7439799bf?auto=format&fit=crop&w=800&q=82"
             ]),
-        new("name-in-lights", "Your Name, In Lights", PersonalizedGifts, "A one-of-a-kind touch, made just for them.", 1799,
+        new(3, "Your Name, In Lights", PersonalizedGifts, "A one-of-a-kind touch, made just for them.", 1799,
             "https://images.unsplash.com/photo-1513883049090-d0b7439799bf?auto=format&fit=crop&w=800&q=82", "New",
             [
                 "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=800&q=82",
                 "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=800&q=82"
-            ]),
-        new("sunday-flowers", "Sunday Kind of Flowers", HomeDecor, "A little colour for their everyday corner.", 899,
+            ], isPersonalized: true),
+        new(4, "Sunday Kind of Flowers", HomeDecor, "A little colour for their everyday corner.", 899,
             "https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=800&q=82", "Popular"),
-        new("our-story-frame", "Our Story Frame", Keepsakes, "Make your favourite chapter a keepsake.", 1599,
+        new(5, "Our Story Frame", Keepsakes, "Make your favourite chapter a keepsake.", 1599,
             "https://images.unsplash.com/photo-1504198322253-cfa87a0ff25f?auto=format&fit=crop&w=800&q=82", "Recommended"),
-        new("soft-thoughts", "Soft Thoughts Gift Set", GiftHampers, "A thoughtful little bundle for a big day.", 1899,
+        new(6, "Soft Thoughts Gift Set", GiftHampers, "A thoughtful little bundle for a big day.", 1899,
             "https://images.unsplash.com/photo-1513201099705-a9746e1e201f?auto=format&fit=crop&w=800&q=82", "New"),
-        new("little-love-note", "The Little Love Note", HandmadeGifts, "Your words, beautifully kept close.", 699,
+        new(7, "The Little Love Note", HandmadeGifts, "Your words, beautifully kept close.", 699,
             "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=800&q=82", "Recommended"),
-        new("golden-hour", "Golden Hour Keepsake", HomeDecor, "A warm, lovely detail for their happy place.", 1099,
+        new(8, "Golden Hour Keepsake", HomeDecor, "A warm, lovely detail for their happy place.", 1099,
             "https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?auto=format&fit=crop&w=800&q=82", "Popular"),
-        new("celebrate-together", "Celebrate Together Hamper", GiftsForOccasions, "A joyful little collection for their special day.", 2199,
+        new(9, "Celebrate Together Hamper", GiftsForOccasions, "A joyful little collection for their special day.", 2199,
             "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=800&q=82", "New")
     ];
 

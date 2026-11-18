@@ -31,13 +31,13 @@
                 @foreach (var item in Cart.Items)
                 {
                     <article class="cart-page-item" role="listitem" @key="item.Product.Id">
-                        <a class="cart-page-thumbnail" href="@($"/product/{Uri.EscapeDataString(item.Product.Id)}")"
+                        <a class="cart-page-thumbnail" href="@($"/product/{item.Product.Id}")"
                            aria-label="@($"View {item.Product.Name} details")">
                             <img src="@item.Product.ImageUrl" alt="@item.Product.Name" />
                         </a>
                         <div class="cart-page-item-info">
                             <span class="product-category">@item.Product.Category.Name</span>
-                            <h2><a href="@($"/product/{Uri.EscapeDataString(item.Product.Id)}")">@item.Product.Name</a></h2>
+                            <h2><a href="@($"/product/{item.Product.Id}")">@item.Product.Name</a></h2>
                             <p>@item.Product.Description</p>
                             <span class="cart-page-unit-price">₹@item.Product.Price.ToString("N0", CultureInfo.GetCultureInfo("en-IN")) each</span>
                             <div class="cart-page-quantity" role="group" aria-label="@($"Quantity for {item.Product.Name}")">

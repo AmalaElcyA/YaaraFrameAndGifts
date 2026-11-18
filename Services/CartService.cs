@@ -7,7 +7,7 @@ public sealed class CartService
     public const decimal FreeShippingThreshold = 999;
     public const decimal ShippingFee = 89;
 
-    private readonly Dictionary<string, CartItem> _items = [];
+    private readonly Dictionary<int, CartItem> _items = [];
 
     public event Action? Changed;
 
@@ -24,7 +24,7 @@ public sealed class CartService
 
         if (_items.TryGetValue(product.Id, out var existing))
         {
-            _items[product.Id] = existing with { Quantity = existing.Quantity + quantity };
+            existing.Quantity += quantity;
         }
         else
         {
@@ -34,18 +34,18 @@ public sealed class CartService
         Changed?.Invoke();
     }
 
-    public void Increase(string productId)
+    public void Increase(int productId)
     {
         if (!_items.TryGetValue(productId, out var existing))
         {
             return;
         }
 
-        _items[productId] = existing with { Quantity = existing.Quantity + 1 };
+        existing.Quantity++;
         Changed?.Invoke();
     }
 
-    public void Decrease(string productId)
+    public void Decrease(int productId)
     {
         if (!_items.TryGetValue(productId, out var existing))
         {
@@ -57,11 +57,11 @@ public sealed class CartService
             return;
         }
 
-        _items[productId] = existing with { Quantity = existing.Quantity - 1 };
+        existing.Quantity--;
         Changed?.Invoke();
     }
 
-    public void Remove(string productId)
+    public void Remove(int productId)
     {
         if (_items.Remove(productId))
         {

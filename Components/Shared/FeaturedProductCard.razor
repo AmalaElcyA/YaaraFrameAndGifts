@@ -3,7 +3,7 @@
 @inject CartService Cart
 
 <article class="featured-product-card">
-    <a class="featured-product-image" href="@($"/product/{Uri.EscapeDataString(Product.Id)}")"
+    <a class="featured-product-image" href="@($"/product/{Product.Id}")"
        aria-label="@($"View details for {Product.Name}")">
         <img src="@Product.ImageUrl" alt="@Product.Name" loading="lazy" />
         @if (!string.IsNullOrWhiteSpace(Product.Badge))
@@ -13,12 +13,12 @@
     </a>
     <div class="featured-product-info">
         <span class="product-category">@Product.Category.Name</span>
-        <a class="featured-product-name" href="@($"/product/{Uri.EscapeDataString(Product.Id)}")">@Product.Name</a>
+        <a class="featured-product-name" href="@($"/product/{Product.Id}")">@Product.Name</a>
         <p class="featured-product-description">@Product.Description</p>
         <div class="featured-product-bottom">
             <strong>₹@Product.Price.ToString("N0", CultureInfo.GetCultureInfo("en-IN"))</strong>
             <div class="featured-product-actions">
-                <a class="featured-product-details" href="@($"/product/{Uri.EscapeDataString(Product.Id)}")">View details</a>
+                <a class="featured-product-details" href="@($"/product/{Product.Id}")">View details</a>
                 <button class="featured-product-add" @onclick="AddToCart">Add to Cart <span aria-hidden="true">+</span></button>
             </div>
         </div>

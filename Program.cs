@@ -1,4 +1,6 @@
 using YaaraFramesGifts.Components;
+using YaaraFramesGifts.Data;
+using Microsoft.EntityFrameworkCore;
 using YaaraFramesGifts.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -6,6 +8,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+builder.Services.AddDbContext<YaaraDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddSingleton<ProductCatalog>();
 builder.Services.AddScoped<CartService>();
 

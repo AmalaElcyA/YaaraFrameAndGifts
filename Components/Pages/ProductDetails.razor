@@ -1,4 +1,4 @@
-﻿@page "/product/{ProductId}"
+@page "/product/{ProductId:int}"
 @using System.Globalization
 @using YaaraFramesGifts.Models
 @inject ProductCatalog ProductCatalog
@@ -9,7 +9,7 @@
 @if (Product is { } product)
 {
     <section class="product-detail-page section-wrap">
-        <a class="product-detail-back" href="@($"/shop?category={Uri.EscapeDataString(product.Category.Id)}")">← Continue Shopping</a>
+        <a class="product-detail-back" href="@($"/shop?category={Uri.EscapeDataString(product.Category.Slug)}")">← Continue Shopping</a>
         <div class="product-detail-layout">
             <div class="product-detail-gallery">
                 <div class="product-detail-image">
@@ -96,15 +96,14 @@ else
 
 @code {
     [Parameter]
-    public string ProductId { get; set; } = string.Empty;
+    public int ProductId { get; set; }
 
     private string? SelectedImageUrl { get; set; }
-    private string? CurrentProductId { get; set; }
+    private int? CurrentProductId { get; set; }
     private int Quantity { get; set; } = 1;
     private string? AddFeedback { get; set; }
 
-    private Product? Product => ProductCatalog.Products.FirstOrDefault(product =>
-        string.Equals(product.Id, ProductId, StringComparison.OrdinalIgnoreCase));
+    private Product? Product => ProductCatalog.Products.FirstOrDefault(product => product.Id == ProductId);
 
     private IReadOnlyList<string> GalleryImages => Product is { } product
         ? new[] { product.ImageUrl }.Concat(product.GalleryImages ?? []).Distinct(StringComparer.OrdinalIgnoreCase).ToArray()
@@ -112,7 +111,7 @@ else
 
     protected override void OnParametersSet()
     {
-        if (string.Equals(CurrentProductId, ProductId, StringComparison.OrdinalIgnoreCase))
+        if (CurrentProductId == ProductId)
         {
             return;
         }

@@ -17,7 +17,8 @@ public sealed class CategoryService(YaaraDbContext dbContext) : ICategoryService
                 category.Name,
                 category.Description,
                 category.Icon,
-                category.AccentColor))
+                category.AccentColor,
+                category.ImageUrl))
             .ToListAsync(cancellationToken);
     }
 
@@ -34,7 +35,11 @@ public sealed class CategoryService(YaaraDbContext dbContext) : ICategoryService
         {
             var term = search.Trim();
             query = query.Where(category =>
-                category.Name.Contains(term) || category.Slug.Contains(term));
+                category.Name.Contains(term)
+                || category.Slug.Contains(term)
+                || (category.Description != null && category.Description.Contains(term))
+                || (category.Icon != null && category.Icon.Contains(term))
+                || (category.AccentColor != null && category.AccentColor.Contains(term)));
         }
 
         query = (sortBy?.ToLowerInvariant(), descending) switch
@@ -54,7 +59,8 @@ public sealed class CategoryService(YaaraDbContext dbContext) : ICategoryService
                 category.Name,
                 category.Description,
                 category.Icon,
-                category.AccentColor))
+                category.AccentColor,
+                category.ImageUrl))
             .ToListAsync(cancellationToken);
 
         return new PagedResultDto<CategoryDto>(items, page, pageSize, totalCount);
@@ -86,7 +92,8 @@ public sealed class CategoryService(YaaraDbContext dbContext) : ICategoryService
             Name = request.Name,
             Description = request.Description,
             Icon = request.Icon,
-            AccentColor = request.AccentColor
+            AccentColor = request.AccentColor,
+            ImageUrl = request.ImageUrl
         };
 
         dbContext.Categories.Add(category);
@@ -110,6 +117,7 @@ public sealed class CategoryService(YaaraDbContext dbContext) : ICategoryService
         category.Description = request.Description;
         category.Icon = request.Icon;
         category.AccentColor = request.AccentColor;
+        category.ImageUrl = request.ImageUrl;
 
         await dbContext.SaveChangesAsync(cancellationToken);
         return new CategoryMutationResult(CategoryMutationStatus.Success, Map(category));
@@ -143,5 +151,6 @@ public sealed class CategoryService(YaaraDbContext dbContext) : ICategoryService
         category.Name,
         category.Description,
         category.Icon,
-        category.AccentColor);
+        category.AccentColor,
+        category.ImageUrl);
 }

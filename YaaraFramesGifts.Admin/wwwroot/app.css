@@ -453,6 +453,31 @@ td strong {
     font-size: 11px;
 }
 
+.catalog-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.catalog-thumbnail {
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    border-radius: 6px;
+    background: #f1f4ef;
+    object-fit: cover;
+}
+
+.image-preview {
+    display: block;
+    width: min(220px, 100%);
+    max-height: 220px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #f1f4ef;
+    object-fit: contain;
+}
+
 .table-footer {
     display: flex;
     min-height: 64px;

@@ -88,10 +88,12 @@ builder.Services.AddHttpClient("AdminApi", (services, client) =>
     var configuredBaseUrl = configuration["AdminApi:BaseUrl"];
     if (!Uri.TryCreate(configuredBaseUrl, UriKind.Absolute, out var baseAddress)
         || (baseAddress.Scheme != Uri.UriSchemeHttp && baseAddress.Scheme != Uri.UriSchemeHttps)
-        || (baseAddress.Scheme != Uri.UriSchemeHttps && !builder.Environment.IsDevelopment()))
+        || (baseAddress.Scheme != Uri.UriSchemeHttps
+            && !builder.Environment.IsDevelopment()
+            && !baseAddress.IsLoopback))
     {
         throw new InvalidOperationException(
-            "AdminApi:BaseUrl must be an absolute HTTPS URL (HTTP is allowed only in Development).");
+            "AdminApi:BaseUrl must be an absolute HTTPS URL (HTTP is allowed only in Development or for loopback hosts).");
     }
 
     client.BaseAddress = new Uri(baseAddress.ToString().TrimEnd('/') + "/");
@@ -122,6 +124,7 @@ app.UseWhen(
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseStaticFiles();
 app.UseRateLimiter();
 
 app.UseAntiforgery();

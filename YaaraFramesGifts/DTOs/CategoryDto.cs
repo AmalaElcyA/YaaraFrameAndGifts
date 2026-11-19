@@ -6,4 +6,5 @@ public sealed record CategoryDto(
     string Name,
     string? Description,
     string? Icon,
-    string? AccentColor);
+    string? AccentColor,
+    string? ImageUrl);

@@ -19,5 +19,10 @@ public sealed record UpdateCategoryRequest
 
     /// <summary>Optional updated accent color.</summary>
     [StringLength(16)]
+    [RegularExpression("^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$", ErrorMessage = "Accent color must be a valid hexadecimal color.")]
     public string? AccentColor { get; init; }
+
+    /// <summary>Optional updated absolute URL of the category image.</summary>
+    [Url(ErrorMessage = "ImageUrl must be a valid absolute URL."), StringLength(500)]
+    public string? ImageUrl { get; init; }
 }

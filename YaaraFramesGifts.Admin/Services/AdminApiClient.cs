@@ -12,6 +12,8 @@ public sealed class AdminApiClient(
     IHttpClientFactory httpClientFactory,
     AuthenticationStateProvider authenticationStateProvider)
 {
+    public const long MaxImageSizeBytes = 5 * 1024 * 1024;
+
     public Task<PagedResultDto<CategoryDto>> GetCategoriesAsync(
         string? search,
         int page,
@@ -89,6 +91,31 @@ public sealed class AdminApiClient(
     public Task DeleteProductAsync(int id, CancellationToken cancellationToken = default) =>
         DeleteAsync($"api/admin/products/{id}", cancellationToken);
 
+    public async Task<string> UploadImageAsync(
+        Stream image,
+        string fileName,
+        string contentType,
+        CancellationToken cancellationToken = default)
+    {
+        using var content = new MultipartFormDataContent();
+        var fileContent = new StreamContent(image);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+        content.Add(fileContent, "file", fileName);
+
+        using var response = await SendContentAsync(
+            HttpMethod.Post,
+            "api/admin/images",
+            content,
+            cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        var result = await response.Content.ReadFromJsonAsync<ImageUploadResponse>(cancellationToken)
+            ?? throw new AdminApiException((int)response.StatusCode, "The image API returned an empty response.");
+
+        var baseAddress = httpClientFactory.CreateClient("AdminApi").BaseAddress
+            ?? throw new InvalidOperationException("The Admin API base address is not configured.");
+        return new Uri(baseAddress, result.ImageUrl).AbsoluteUri;
+    }
+
     private Task<TResponse> GetAsync<TResponse>(string path, CancellationToken cancellationToken) =>
         SendForBodyAsync<TResponse>(HttpMethod.Get, path, null, cancellationToken);
 
@@ -130,6 +157,20 @@ public sealed class AdminApiClient(
         object? body,
         CancellationToken cancellationToken)
     {
+        using var content = body is null ? null : JsonContent.Create(body);
+        return await SendContentAsync(
+            method,
+            path,
+            content,
+            cancellationToken);
+    }
+
+    private async Task<HttpResponseMessage> SendContentAsync(
+        HttpMethod method,
+        string path,
+        HttpContent? content,
+        CancellationToken cancellationToken)
+    {
         var authenticationState = await authenticationStateProvider.GetAuthenticationStateAsync();
         var token = authenticationState.User.FindFirst("admin_api_token")?.Value;
         if (string.IsNullOrWhiteSpace(token))
@@ -141,10 +182,7 @@ public sealed class AdminApiClient(
 
         using var request = new HttpRequestMessage(method, path);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null)
-        {
-            request.Content = JsonContent.Create(body);
-        }
+        request.Content = content;
 
         var client = httpClientFactory.CreateClient("AdminApi");
         try
@@ -158,6 +196,8 @@ public sealed class AdminApiClient(
                 $"Unable to reach the Admin API. {exception.Message}");
         }
     }
+
+    private sealed record ImageUploadResponse(string ImageUrl);
 
     private static async Task EnsureSuccessAsync(
         HttpResponseMessage response,

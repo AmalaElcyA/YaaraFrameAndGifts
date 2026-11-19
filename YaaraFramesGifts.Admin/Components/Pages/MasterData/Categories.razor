@@ -56,7 +56,15 @@
     </HeaderTemplate>
     <RowTemplate Context="category">
         <tr>
-            <td><strong>@category.Name</strong></td>
+            <td>
+                <div class="catalog-item">
+                    @if (!string.IsNullOrWhiteSpace(category.ImageUrl))
+                    {
+                        <img class="catalog-thumbnail" src="@category.ImageUrl" alt="" loading="lazy" />
+                    }
+                    <strong>@category.Name</strong>
+                </div>
+            </td>
             <td><span class="code-chip">@category.Slug</span></td>
             <td class="truncate-cell">@(category.Description ?? "—")</td>
             <td>@(category.Icon ?? "—")</td>
@@ -112,6 +120,29 @@
                     <InputText id="category-accent" @bind-Value="form.AccentColor" placeholder="#B86F68" />
                     <ValidationMessage For="@(() => form.AccentColor)" />
                 </div>
+                <div class="form-field form-field-wide">
+                    <label for="category-image-upload">Upload or replace image</label>
+                    <InputFile @key="imageInputKey" id="category-image-upload"
+                               OnChange="HandleImageSelectedAsync"
+                               accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" />
+                    <small>JPG, PNG, or WEBP; maximum 5 MB. A category image is optional.</small>
+                    @if (!string.IsNullOrWhiteSpace(imagePreviewUrl))
+                    {
+                        <img class="image-preview" src="@imagePreviewUrl" alt="Category image preview" />
+                    }
+                    @if (selectedImage is not null)
+                    {
+                        <button class="text-button" type="button" @onclick="KeepCurrentImage">
+                            Keep current image
+                        </button>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(form.ImageUrl) || selectedImage is not null)
+                    {
+                        <button class="text-button danger-text" type="button" @onclick="RemoveImage">
+                            Remove image
+                        </button>
+                    }
+                </div>
             </div>
             <div class="form-actions">
                 <button class="secondary-button" type="button" @onclick="CloseEditor">Cancel</button>
@@ -138,6 +169,17 @@
             <dt>Description</dt><dd>@(details.Description ?? "—")</dd>
             <dt>Icon</dt><dd>@(details.Icon ?? "—")</dd>
             <dt>Accent color</dt><dd>@(details.AccentColor ?? "—")</dd>
+            <dt>Image</dt>
+            <dd>
+                @if (!string.IsNullOrWhiteSpace(details.ImageUrl))
+                {
+                    <img class="image-preview" src="@details.ImageUrl" alt="@details.Name" />
+                }
+                else
+                {
+                    <span>—</span>
+                }
+            </dd>
             <dt>Status</dt><dd>No active/inactive field exists for categories.</dd>
         </dl>
     </section>
@@ -170,6 +212,9 @@
     private bool showEditor;
     private bool isNew;
     private bool descending;
+    private IBrowserFile? selectedImage;
+    private string? imagePreviewUrl;
+    private int imageInputKey;
     private int page = 1;
     private int pageSize = 20;
     private string sortBy = "name";
@@ -253,6 +298,7 @@
         details = null;
         deleteTarget = null;
         form = new CategoryForm();
+        ResetImageSelection();
         isNew = true;
         showEditor = true;
         errorMessage = null;
@@ -269,8 +315,11 @@
             Name = category.Name,
             Description = category.Description ?? string.Empty,
             Icon = category.Icon ?? string.Empty,
-            AccentColor = category.AccentColor ?? string.Empty
+            AccentColor = category.AccentColor ?? string.Empty,
+            ImageUrl = category.ImageUrl ?? string.Empty
         };
+        ResetImageSelection();
+        imagePreviewUrl = category.ImageUrl;
         isNew = false;
         showEditor = true;
         errorMessage = null;
@@ -293,6 +342,44 @@
         successMessage = null;
     }
 
+    private async Task HandleImageSelectedAsync(InputFileChangeEventArgs args)
+    {
+        errorMessage = null;
+        var image = args.File;
+        var extension = Path.GetExtension(image.Name).ToLowerInvariant();
+        var expectedContentType = extension switch
+        {
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".png" => "image/png",
+            ".webp" => "image/webp",
+            _ => null
+        };
+        if (image.Size is <= 0 or > AdminApiClient.MaxImageSizeBytes
+            || expectedContentType is null
+            || !string.Equals(image.ContentType, expectedContentType, StringComparison.OrdinalIgnoreCase))
+        {
+            selectedImage = null;
+            imagePreviewUrl = form.ImageUrl;
+            errorMessage = "Choose a JPG, PNG, or WEBP image no larger than 5 MB.";
+            return;
+        }
+
+        try
+        {
+            await using var stream = image.OpenReadStream(AdminApiClient.MaxImageSizeBytes);
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer);
+            selectedImage = image;
+            imagePreviewUrl = $"data:{image.ContentType};base64,{Convert.ToBase64String(buffer.ToArray())}";
+        }
+        catch (IOException exception)
+        {
+            selectedImage = null;
+            imagePreviewUrl = form.ImageUrl;
+            errorMessage = $"Unable to preview the selected image. {exception.Message}";
+        }
+    }
+
     private async Task SaveAsync()
     {
         isSaving = true;
@@ -300,6 +387,7 @@
         successMessage = null;
         try
         {
+            await UploadSelectedImageAsync();
             if (isNew)
             {
                 await Api.CreateCategoryAsync(new CreateCategoryRequest
@@ -308,7 +396,8 @@
                     Name = form.Name,
                     Description = NullIfEmpty(form.Description),
                     Icon = NullIfEmpty(form.Icon),
-                    AccentColor = NullIfEmpty(form.AccentColor)
+                    AccentColor = NullIfEmpty(form.AccentColor),
+                    ImageUrl = NullIfEmpty(form.ImageUrl)
                 });
                 successMessage = "Category created.";
             }
@@ -319,7 +408,8 @@
                     Name = form.Name,
                     Description = NullIfEmpty(form.Description),
                     Icon = NullIfEmpty(form.Icon),
-                    AccentColor = NullIfEmpty(form.AccentColor)
+                    AccentColor = NullIfEmpty(form.AccentColor),
+                    ImageUrl = NullIfEmpty(form.ImageUrl)
                 });
                 successMessage = "Category updated.";
             }
@@ -371,6 +461,44 @@
     private static string? NullIfEmpty(string value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
+    private async Task UploadSelectedImageAsync()
+    {
+        if (selectedImage is null)
+        {
+            return;
+        }
+
+        await using var stream = selectedImage.OpenReadStream(AdminApiClient.MaxImageSizeBytes);
+        form.ImageUrl = await Api.UploadImageAsync(
+            stream,
+            $"image{Path.GetExtension(selectedImage.Name)}",
+            selectedImage.ContentType);
+        selectedImage = null;
+        imagePreviewUrl = form.ImageUrl;
+    }
+
+    private void KeepCurrentImage()
+    {
+        selectedImage = null;
+        imagePreviewUrl = form.ImageUrl;
+        imageInputKey++;
+    }
+
+    private void RemoveImage()
+    {
+        selectedImage = null;
+        form.ImageUrl = string.Empty;
+        imagePreviewUrl = null;
+        imageInputKey++;
+    }
+
+    private void ResetImageSelection()
+    {
+        selectedImage = null;
+        imagePreviewUrl = null;
+        imageInputKey++;
+    }
+
     private static string FormatError(AdminApiException exception)
     {
         if (exception.Errors is null || exception.Errors.Count == 0)
@@ -384,6 +512,7 @@
     private sealed class CategoryForm
     {
         [Required, StringLength(64, MinimumLength = 1)]
+        [RegularExpression("^[a-z0-9]+(?:-[a-z0-9]+)*$", ErrorMessage = "Use lowercase letters, numbers, and single hyphens.")]
         public string Slug { get; set; } = string.Empty;
 
         [Required, StringLength(120, MinimumLength = 1)]
@@ -396,6 +525,10 @@
         public string Icon { get; set; } = string.Empty;
 
         [StringLength(16)]
+        [RegularExpression("^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$", ErrorMessage = "Enter a valid hexadecimal color.")]
         public string AccentColor { get; set; } = string.Empty;
+
+        [Url, StringLength(500)]
+        public string ImageUrl { get; set; } = string.Empty;
     }
 }

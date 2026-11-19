@@ -1,4 +1,5 @@
 @typeparam TItem
+@implements IDisposable
 
 <section class="panel">
     <div class="table-toolbar">
@@ -8,6 +9,10 @@
                 <input id="master-search" value="@SearchText" @oninput="HandleSearchInput"
                        @onkeydown="HandleSearchKeyDown" placeholder="Search..." />
                 <button class="secondary-button" type="button" @onclick="OnSearch">Search</button>
+                @if (!string.IsNullOrWhiteSpace(SearchText))
+                {
+                    <button class="secondary-button" type="button" @onclick="ClearSearch">Clear</button>
+                }
             </div>
         </div>
         @Toolbar
@@ -19,7 +24,7 @@
     }
     else if (Items.Count == 0)
     {
-        <div class="empty-state">No records match your search.</div>
+        <div class="empty-state">No matching records were found.</div>
     }
     else
     {
@@ -70,8 +75,34 @@
     [Parameter] public EventCallback OnPreviousPage { get; set; }
     [Parameter] public EventCallback OnNextPage { get; set; }
 
-    private async Task HandleSearchInput(ChangeEventArgs args) =>
+    private CancellationTokenSource? searchDebounce;
+
+    private async Task HandleSearchInput(ChangeEventArgs args)
+    {
         await SearchTextChanged.InvokeAsync(args.Value?.ToString() ?? string.Empty);
+        searchDebounce?.Cancel();
+        searchDebounce?.Dispose();
+        var debounce = new CancellationTokenSource();
+        searchDebounce = debounce;
+        try
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(300), debounce.Token);
+            if (ReferenceEquals(searchDebounce, debounce))
+            {
+                await OnSearch.InvokeAsync();
+            }
+        }
+        catch (OperationCanceledException) when (debounce.IsCancellationRequested)
+        {
+        }
+    }
+
+    private async Task ClearSearch()
+    {
+        searchDebounce?.Cancel();
+        await SearchTextChanged.InvokeAsync(string.Empty);
+        await OnSearch.InvokeAsync();
+    }
 
     private async Task HandleSearchKeyDown(KeyboardEventArgs args)
     {
@@ -87,5 +118,11 @@
         {
             await OnPageSizeChanged.InvokeAsync(pageSize);
         }
+    }
+
+    public void Dispose()
+    {
+        searchDebounce?.Cancel();
+        searchDebounce?.Dispose();
     }
 }

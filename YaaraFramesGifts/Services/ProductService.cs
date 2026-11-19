@@ -22,7 +22,8 @@ public sealed class ProductService(YaaraDbContext dbContext) : IProductService
             product.Category.Name,
             product.Category.Description,
             product.Category.Icon,
-            product.Category.AccentColor));
+            product.Category.AccentColor,
+            product.Category.ImageUrl));
 
     public async Task<IReadOnlyList<ProductDto>> GetAllAsync(
         string? category,
@@ -71,10 +72,14 @@ public sealed class ProductService(YaaraDbContext dbContext) : IProductService
         if (!string.IsNullOrWhiteSpace(search))
         {
             var term = search.Trim();
+            var matchesId = int.TryParse(term, out var productId);
             query = query.Where(product =>
                 product.Name.Contains(term)
                 || product.Description.Contains(term)
-                || (product.Badge != null && product.Badge.Contains(term)));
+                || product.Category.Name.Contains(term)
+                || product.CategorySlug.Contains(term)
+                || (product.Badge != null && product.Badge.Contains(term))
+                || (matchesId && product.Id == productId));
         }
 
         query = (sortBy?.ToLowerInvariant(), descending) switch
@@ -223,5 +228,6 @@ public sealed class ProductService(YaaraDbContext dbContext) : IProductService
             product.Category.Name,
             product.Category.Description,
             product.Category.Icon,
-            product.Category.AccentColor));
+            product.Category.AccentColor,
+            product.Category.ImageUrl));
 }

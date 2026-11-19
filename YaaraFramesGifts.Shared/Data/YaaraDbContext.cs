@@ -23,6 +23,7 @@ public sealed class YaaraDbContext(DbContextOptions<YaaraDbContext> options) : D
             entity.Property(category => category.Description).HasMaxLength(300);
             entity.Property(category => category.Icon).HasMaxLength(32);
             entity.Property(category => category.AccentColor).HasMaxLength(16);
+            entity.Property(category => category.ImageUrl).HasMaxLength(500);
 
             entity.HasMany(category => category.Products)
                 .WithOne(product => product.Category)

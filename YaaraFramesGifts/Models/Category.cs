@@ -19,8 +19,7 @@ public sealed class Category
         set => Slug = value;
     }
 
-    [NotMapped]
-    public string ImageUrl { get; set; } = string.Empty;
+    public string? ImageUrl { get; set; }
 
     public Category()
     {

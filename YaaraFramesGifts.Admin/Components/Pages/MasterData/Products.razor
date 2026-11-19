@@ -62,7 +62,12 @@
     <RowTemplate Context="product">
         <tr>
             <td><span class="code-chip">#@product.Id</span></td>
-            <td><strong>@product.Name</strong></td>
+            <td>
+                <div class="catalog-item">
+                    <img class="catalog-thumbnail" src="@product.ImageUrl" alt="" loading="lazy" />
+                    <strong>@product.Name</strong>
+                </div>
+            </td>
             <td>@product.Category.Name</td>
             <td>₹@product.Price.ToString("N2")</td>
             <td>@(product.Badge ?? "—")</td>
@@ -131,6 +136,23 @@
                     <InputText id="product-image" @bind-Value="form.ImageUrl" type="url" />
                     <ValidationMessage For="@(() => form.ImageUrl)" />
                 </div>
+                <div class="form-field form-field-wide">
+                    <label for="product-image-upload">Upload or replace image</label>
+                    <InputFile @key="imageInputKey" id="product-image-upload"
+                               OnChange="HandleImageSelectedAsync"
+                               accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" />
+                    <small>JPG, PNG, or WEBP; maximum 5 MB. Leave empty to keep the current image.</small>
+                    @if (!string.IsNullOrWhiteSpace(imagePreviewUrl ?? form.ImageUrl))
+                    {
+                        <img class="image-preview" src="@(imagePreviewUrl ?? form.ImageUrl)" alt="Product image preview" />
+                    }
+                    @if (selectedImage is not null)
+                    {
+                        <button class="text-button" type="button" @onclick="KeepCurrentImage">
+                            Keep current image
+                        </button>
+                    }
+                </div>
                 <div class="form-field checkbox-field">
                     <InputCheckbox id="product-personalized" @bind-Value="form.IsPersonalized" />
                     <label for="product-personalized">Can be personalized</label>
@@ -161,6 +183,7 @@
             <dt>Description</dt><dd>@details.Description</dd>
             <dt>Price</dt><dd>₹@details.Price.ToString("N2")</dd>
             <dt>Category</dt><dd>@details.Category.Name (@details.CategorySlug)</dd>
+            <dt>Image</dt><dd><img class="image-preview" src="@details.ImageUrl" alt="@details.Name" /></dd>
             <dt>Image URL</dt><dd><a href="@details.ImageUrl" target="_blank" rel="noopener noreferrer">@details.ImageUrl</a></dd>
             <dt>Badge</dt><dd>@(details.Badge ?? "—")</dd>
             <dt>Personalized</dt><dd>@(details.IsPersonalized ? "Yes" : "No")</dd>
@@ -197,6 +220,9 @@
     private bool showEditor;
     private bool isNew;
     private bool descending;
+    private IBrowserFile? selectedImage;
+    private string? imagePreviewUrl;
+    private int imageInputKey;
     private int page = 1;
     private int pageSize = 20;
     private string sortBy = "id";
@@ -297,6 +323,7 @@
         details = null;
         deleteTarget = null;
         form = new ProductForm();
+        ResetImageSelection();
         isNew = true;
         showEditor = true;
         errorMessage = null;
@@ -318,6 +345,8 @@
             Badge = product.Badge ?? string.Empty,
             IsPersonalized = product.IsPersonalized
         };
+        ResetImageSelection();
+        imagePreviewUrl = product.ImageUrl;
         isNew = false;
         showEditor = true;
         errorMessage = null;
@@ -340,6 +369,46 @@
         successMessage = null;
     }
 
+    private async Task HandleImageSelectedAsync(InputFileChangeEventArgs args)
+    {
+        errorMessage = null;
+        var image = args.File;
+        var extension = Path.GetExtension(image.Name).ToLowerInvariant();
+        var expectedContentType = extension switch
+        {
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".png" => "image/png",
+            ".webp" => "image/webp",
+            _ => null
+        };
+        if (image.Size is <= 0 or > AdminApiClient.MaxImageSizeBytes
+            || expectedContentType is null
+            || !string.Equals(image.ContentType, expectedContentType, StringComparison.OrdinalIgnoreCase))
+        {
+            selectedImage = null;
+            form.HasSelectedImage = false;
+            imagePreviewUrl = form.ImageUrl;
+            errorMessage = "Choose a JPG, PNG, or WEBP image no larger than 5 MB.";
+            return;
+        }
+
+        try
+        {
+            await using var stream = image.OpenReadStream(AdminApiClient.MaxImageSizeBytes);
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer);
+            selectedImage = image;
+            form.HasSelectedImage = true;
+            imagePreviewUrl = $"data:{image.ContentType};base64,{Convert.ToBase64String(buffer.ToArray())}";
+        }
+        catch (IOException exception)
+        {
+            selectedImage = null;
+            form.HasSelectedImage = false;
+            errorMessage = $"Unable to preview the selected image. {exception.Message}";
+        }
+    }
+
     private async Task SaveAsync()
     {
         isSaving = true;
@@ -347,6 +416,7 @@
         successMessage = null;
         try
         {
+            await UploadSelectedImageAsync();
             if (isNew)
             {
                 await Api.CreateProductAsync(ToCreateRequest());
@@ -372,6 +442,23 @@
     }
 
     private int editingProductId;
+
+    private async Task UploadSelectedImageAsync()
+    {
+        if (selectedImage is null)
+        {
+            return;
+        }
+
+        await using var stream = selectedImage.OpenReadStream(AdminApiClient.MaxImageSizeBytes);
+        form.ImageUrl = await Api.UploadImageAsync(
+            stream,
+            $"image{Path.GetExtension(selectedImage.Name)}",
+            selectedImage.ContentType);
+        selectedImage = null;
+        form.HasSelectedImage = false;
+        imagePreviewUrl = form.ImageUrl;
+    }
 
     private async Task ConfirmDeleteAsync()
     {
@@ -429,6 +516,21 @@
     private static string? NullIfEmpty(string value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
+    private void ResetImageSelection()
+    {
+        selectedImage = null;
+        imagePreviewUrl = null;
+        imageInputKey++;
+    }
+
+    private void KeepCurrentImage()
+    {
+        selectedImage = null;
+        form.HasSelectedImage = false;
+        imagePreviewUrl = form.ImageUrl;
+        imageInputKey++;
+    }
+
     private static string FormatError(AdminApiException exception)
     {
         if (exception.Errors is null || exception.Errors.Count == 0)
@@ -439,7 +541,7 @@
         return $"{exception.Message} {string.Join(" ", exception.Errors.Values.SelectMany(messages => messages))}";
     }
 
-    private sealed class ProductForm
+    private sealed class ProductForm : IValidatableObject
     {
         [Required, StringLength(160, MinimumLength = 1)]
         public string Name { get; set; } = string.Empty;
@@ -450,8 +552,10 @@
         [Range(typeof(decimal), "0.01", "9999999999999999.99")]
         public decimal Price { get; set; }
 
-        [Required, Url, StringLength(500, MinimumLength = 1)]
+        [Url, StringLength(500)]
         public string ImageUrl { get; set; } = string.Empty;
+
+        public bool HasSelectedImage { get; set; }
 
         [Required, StringLength(64, MinimumLength = 1)]
         public string CategorySlug { get; set; } = string.Empty;
@@ -461,5 +565,15 @@
         public string Badge { get; set; } = string.Empty;
 
         public bool IsPersonalized { get; set; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (!HasSelectedImage && string.IsNullOrWhiteSpace(ImageUrl))
+            {
+                yield return new ValidationResult(
+                    "Upload an image or enter an image URL.",
+                    [nameof(ImageUrl)]);
+            }
+        }
     }
 }

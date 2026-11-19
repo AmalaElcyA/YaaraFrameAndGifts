@@ -39,7 +39,7 @@ Keep the directory outside the publish folders so deployments do not replace the
 
 ## Database migration
 
-The `AddAdminUsers` migration adds the administrator account table to the existing database; it does not create another database or modify catalog tables. From the `YaaraFramesGifts` project directory, apply it with:
+The `AddAdminUsers` migration adds the administrator account table, and `PersistCategoryImages` adds an optional image URL to Categories. They apply to the existing database; neither creates another database. From the `YaaraFramesGifts` project directory, apply pending migrations with:
 
 ```powershell
 dotnet ef database update `
@@ -52,5 +52,7 @@ Development startup applies pending migrations automatically. Apply migrations d
 ## Catalog administration
 
 The Admin UI manages Categories and Products through `/api/admin/categories` and `/api/admin/products`. These Admin-hosted APIs reuse the main application's catalog services and database. They provide paginated, searchable, sortable lists and use the existing duplicate, foreign-key, and dependent-record deletion checks. Categories and Products do not have persisted active/inactive fields, so no status toggle is offered.
+
+Administrators can upload JPG, JPEG, PNG, and WEBP catalog images up to 5 MB through the protected `/api/admin/images` endpoint. Images are stored under the Admin app's `wwwroot/uploads/catalog` directory and served as static files. Ensure the Admin app identity can write to this directory and that deployments preserve it; otherwise uploaded image URLs will stop working after a deployment.
 
 Admin login posts username and password to `/api/admin/auth/login`. The API validates credentials against `AdminUsers`, rejects inactive accounts, and returns a short-lived protected bearer token. Admin UI pages use a local secure cookie, while both Admin APIs and the main app's protected catalog writes enforce the administrator policy server-side.

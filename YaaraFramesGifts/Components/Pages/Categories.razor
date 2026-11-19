@@ -70,6 +70,7 @@
     }
 
     private string? GetCategoryImage(CategoryDto category) =>
-        products.FirstOrDefault(product =>
+        category.ImageUrl
+        ?? products.FirstOrDefault(product =>
             string.Equals(product.CategorySlug, category.Slug, StringComparison.OrdinalIgnoreCase))?.ImageUrl;
 }

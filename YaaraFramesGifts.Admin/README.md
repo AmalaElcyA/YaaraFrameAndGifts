@@ -15,6 +15,28 @@ The Admin app hosts the protected catalog and administrator APIs and serves the 
 
 Additional administrators can use indices `1`, `2`, and so on. Bootstrap accounts are created only when their normalized username does not already exist. Passwords must be at least 12 characters and contain lowercase, uppercase, numeric, and non-alphanumeric characters. Passwords are stored as hashes.
 
+## IIS deployment
+
+The main and Admin apps both fail startup outside Development if `AdminAuth__KeyRingPath` is missing. Create a persistent directory outside either publish folder, such as `C:\ProgramData\YaaraFramesGifts\KeyRing`, and grant Modify permission on it to both IIS application-pool identities. For example, replace the pool names below with the names configured in IIS:
+
+```powershell
+New-Item -ItemType Directory -Force C:\ProgramData\YaaraFramesGifts\KeyRing
+icacls C:\ProgramData\YaaraFramesGifts\KeyRing /grant `
+  "IIS AppPool\YaaraFramesGifts:(OI)(CI)M" `
+  "IIS AppPool\YaaraFramesGiftsAdmin:(OI)(CI)M"
+```
+
+Set `AdminAuth__KeyRingPath` to that exact same directory for both sites. One option is to add it to each published site's `web.config`, inside the existing `<aspNetCore>` element:
+
+```xml
+<environmentVariables>
+  <environmentVariable name="AdminAuth__KeyRingPath"
+                       value="C:\ProgramData\YaaraFramesGifts\KeyRing" />
+</environmentVariables>
+```
+
+Keep the directory outside the publish folders so deployments do not replace the keys. The main and Admin apps must use the same key directory; separate keys prevent the main app from validating Admin API tokens.
+
 ## Database migration
 
 The `AddAdminUsers` migration adds the administrator account table to the existing database; it does not create another database or modify catalog tables. From the `YaaraFramesGifts` project directory, apply it with:

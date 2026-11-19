@@ -8,6 +8,15 @@ public interface IProductService
         string? category,
         string? badge,
         CancellationToken cancellationToken);
+    Task<PagedResultDto<ProductDto>> GetPageAsync(
+        string? category,
+        string? badge,
+        string? search,
+        int page,
+        int pageSize,
+        string? sortBy,
+        bool descending,
+        CancellationToken cancellationToken);
     Task<IReadOnlyList<ProductDto>> GetFeaturedAsync(CancellationToken cancellationToken);
     Task<ProductDto?> GetByIdAsync(int id, CancellationToken cancellationToken);
     Task<ProductMutationResult> CreateAsync(

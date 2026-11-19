@@ -5,6 +5,13 @@ namespace YaaraFramesGifts.Services;
 public interface ICategoryService
 {
     Task<IReadOnlyList<CategoryDto>> GetAllAsync(CancellationToken cancellationToken);
+    Task<PagedResultDto<CategoryDto>> GetPageAsync(
+        string? search,
+        int page,
+        int pageSize,
+        string? sortBy,
+        bool descending,
+        CancellationToken cancellationToken);
     Task<CategoryDto?> GetBySlugAsync(string slug, CancellationToken cancellationToken);
     Task<CategoryMutationResult> CreateAsync(
         CreateCategoryRequest request,

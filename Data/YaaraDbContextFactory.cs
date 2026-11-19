@@ -23,7 +23,7 @@ public sealed class YaaraDbContextFactory : IDesignTimeDbContextFactory<YaaraDbC
         }
 
         var options = new DbContextOptionsBuilder<YaaraDbContext>()
-            .UseSqlServer(connectionString)
+            .UseSqlServer(connectionString, sqlServer => sqlServer.MigrationsAssembly("YaaraFramesGifts.Shared"))
             .Options;
 
         return new YaaraDbContext(options);

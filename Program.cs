@@ -3,6 +3,10 @@ using YaaraFramesGifts.Data;
 using Microsoft.EntityFrameworkCore;
 using YaaraFramesGifts.Api;
 using YaaraFramesGifts.Services;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Identity;
+using YaaraFramesGifts.Models;
+using YaaraFramesGifts.Security;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,10 +14,23 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddControllers();
-builder.Services.AddOpenApi();
+builder.Services.AddSwaggerGen();
 builder.Services.AddProblemDetails();
 builder.Services.AddDbContext<YaaraDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        sqlServer => sqlServer.MigrationsAssembly("YaaraFramesGifts.Shared")));
+builder.Services.AddSharedAdminDataProtection(builder.Configuration, builder.Environment);
+builder.Services.AddSingleton<AdminAccessTokenService>();
+builder.Services.AddScoped<IPasswordHasher<AdminUser>, PasswordHasher<AdminUser>>();
+builder.Services.AddAuthentication(AdminAuthenticationDefaults.Scheme)
+    .AddAdminBearer();
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy(AdminAuthenticationDefaults.Policy, policy =>
+    {
+        policy.AddAuthenticationSchemes(AdminAuthenticationDefaults.Scheme);
+        policy.RequireRole("Admin");
+    });
 builder.Services.AddHttpClient<IYaaraApiClient, YaaraApiClient>();
 builder.Services.AddScoped<CartSession>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
@@ -51,14 +68,14 @@ app.UseWhen(
     context => !context.Request.Path.StartsWithSegments("/api"),
     pages => pages.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true));
 app.UseHttpsRedirection();
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseAntiforgery();
 
 app.MapStaticAssets();
 app.MapControllers();
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
+app.UseSwagger();
+app.UseSwaggerUI();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

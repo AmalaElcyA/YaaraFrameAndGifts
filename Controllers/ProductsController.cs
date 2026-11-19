@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using System.ComponentModel.DataAnnotations;
 using YaaraFramesGifts.DTOs;
 using YaaraFramesGifts.Services;
 
@@ -18,6 +20,32 @@ public sealed class ProductsController(IProductService productService) : Control
         CancellationToken cancellationToken)
     {
         var products = await productService.GetAllAsync(category, badge, cancellationToken);
+        return Ok(products);
+    }
+
+    /// <summary>Returns searchable, paged products for the administration interface.</summary>
+    [HttpGet("manage")]
+    [Authorize(Policy = "AdminOnly")]
+    [ProducesResponseType(typeof(PagedResultDto<ProductDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedResultDto<ProductDto>>> GetManageList(
+        [FromQuery(Name = "category")] string? category,
+        [FromQuery] string? badge,
+        [FromQuery] string? search,
+        [FromQuery, Range(1, 1000000)] int page = 1,
+        [FromQuery, Range(1, 100)] int pageSize = 20,
+        [FromQuery] string? sortBy = "id",
+        [FromQuery] bool descending = false,
+        CancellationToken cancellationToken = default)
+    {
+        var products = await productService.GetPageAsync(
+            category,
+            badge,
+            search,
+            page,
+            pageSize,
+            sortBy,
+            descending,
+            cancellationToken);
         return Ok(products);
     }
 
@@ -47,6 +75,7 @@ public sealed class ProductsController(IProductService productService) : Control
 
     /// <summary>Creates a product in an existing category.</summary>
     [HttpPost]
+    [Authorize(Policy = "AdminOnly")]
     [ProducesResponseType(typeof(ProductDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ProductDto>> Create(
@@ -73,6 +102,7 @@ public sealed class ProductsController(IProductService productService) : Control
 
     /// <summary>Updates an existing product.</summary>
     [HttpPut("{id:int}")]
+    [Authorize(Policy = "AdminOnly")]
     [ProducesResponseType(typeof(ProductDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
@@ -109,6 +139,7 @@ public sealed class ProductsController(IProductService productService) : Control
 
     /// <summary>Deletes a product if it is not referenced by a cart item.</summary>
     [HttpDelete("{id:int}")]
+    [Authorize(Policy = "AdminOnly")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]

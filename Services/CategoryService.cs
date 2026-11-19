@@ -21,6 +21,45 @@ public sealed class CategoryService(YaaraDbContext dbContext) : ICategoryService
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<PagedResultDto<CategoryDto>> GetPageAsync(
+        string? search,
+        int page,
+        int pageSize,
+        string? sortBy,
+        bool descending,
+        CancellationToken cancellationToken)
+    {
+        var query = dbContext.Categories.AsNoTracking();
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim();
+            query = query.Where(category =>
+                category.Name.Contains(term) || category.Slug.Contains(term));
+        }
+
+        query = (sortBy?.ToLowerInvariant(), descending) switch
+        {
+            ("slug", false) => query.OrderBy(category => category.Slug),
+            ("slug", true) => query.OrderByDescending(category => category.Slug),
+            ("name", true) => query.OrderByDescending(category => category.Name).ThenBy(category => category.Slug),
+            _ => query.OrderBy(category => category.Name).ThenBy(category => category.Slug)
+        };
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(category => new CategoryDto(
+                category.Slug,
+                category.Name,
+                category.Description,
+                category.Icon,
+                category.AccentColor))
+            .ToListAsync(cancellationToken);
+
+        return new PagedResultDto<CategoryDto>(items, page, pageSize, totalCount);
+    }
+
     public async Task<CategoryDto?> GetBySlugAsync(string slug, CancellationToken cancellationToken)
     {
         var category = await dbContext.Categories

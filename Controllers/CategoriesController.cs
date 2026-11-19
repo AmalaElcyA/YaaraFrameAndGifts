@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using System.ComponentModel.DataAnnotations;
 using YaaraFramesGifts.DTOs;
 using YaaraFramesGifts.Services;
 
@@ -15,6 +17,28 @@ public sealed class CategoriesController(ICategoryService categoryService) : Con
     public async Task<ActionResult<IReadOnlyList<CategoryDto>>> GetAll(CancellationToken cancellationToken)
     {
         var categories = await categoryService.GetAllAsync(cancellationToken);
+        return Ok(categories);
+    }
+
+    /// <summary>Returns searchable, paged categories for the administration interface.</summary>
+    [HttpGet("manage")]
+    [Authorize(Policy = "AdminOnly")]
+    [ProducesResponseType(typeof(PagedResultDto<CategoryDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedResultDto<CategoryDto>>> GetManageList(
+        [FromQuery] string? search,
+        [FromQuery, Range(1, 1000000)] int page = 1,
+        [FromQuery, Range(1, 100)] int pageSize = 20,
+        [FromQuery] string? sortBy = "name",
+        [FromQuery] bool descending = false,
+        CancellationToken cancellationToken = default)
+    {
+        var categories = await categoryService.GetPageAsync(
+            search,
+            page,
+            pageSize,
+            sortBy,
+            descending,
+            cancellationToken);
         return Ok(categories);
     }
 
@@ -37,6 +61,7 @@ public sealed class CategoriesController(ICategoryService categoryService) : Con
 
     /// <summary>Creates a category with a unique slug.</summary>
     [HttpPost]
+    [Authorize(Policy = "AdminOnly")]
     [ProducesResponseType(typeof(CategoryDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<CategoryDto>> Create(
@@ -59,6 +84,7 @@ public sealed class CategoriesController(ICategoryService categoryService) : Con
 
     /// <summary>Updates the details of an existing category.</summary>
     [HttpPut("{slug}")]
+    [Authorize(Policy = "AdminOnly")]
     [ProducesResponseType(typeof(CategoryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<CategoryDto>> Update(
@@ -82,6 +108,7 @@ public sealed class CategoriesController(ICategoryService categoryService) : Con
 
     /// <summary>Deletes a category if it has no products.</summary>
     [HttpDelete("{slug}")]
+    [Authorize(Policy = "AdminOnly")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]

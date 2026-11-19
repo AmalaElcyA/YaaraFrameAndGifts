@@ -30,7 +30,6 @@ public sealed class ProductService(YaaraDbContext dbContext) : IProductService
         CancellationToken cancellationToken)
     {
         var query = dbContext.Products.AsNoTracking();
-
         if (!string.IsNullOrWhiteSpace(category))
         {
             query = query.Where(product => product.CategorySlug == category);
@@ -45,6 +44,61 @@ public sealed class ProductService(YaaraDbContext dbContext) : IProductService
             .OrderBy(product => product.Id)
             .Select(ProductProjection)
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task<PagedResultDto<ProductDto>> GetPageAsync(
+        string? category,
+        string? badge,
+        string? search,
+        int page,
+        int pageSize,
+        string? sortBy,
+        bool descending,
+        CancellationToken cancellationToken)
+    {
+        var query = dbContext.Products.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(category))
+        {
+            query = query.Where(product => product.CategorySlug == category);
+        }
+
+        if (!string.IsNullOrWhiteSpace(badge))
+        {
+            query = query.Where(product => product.Badge == badge);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim();
+            query = query.Where(product =>
+                product.Name.Contains(term)
+                || product.Description.Contains(term)
+                || (product.Badge != null && product.Badge.Contains(term)));
+        }
+
+        query = (sortBy?.ToLowerInvariant(), descending) switch
+        {
+            ("name", false) => query.OrderBy(product => product.Name).ThenBy(product => product.Id),
+            ("name", true) => query.OrderByDescending(product => product.Name).ThenBy(product => product.Id),
+            ("price", false) => query.OrderBy(product => product.Price).ThenBy(product => product.Id),
+            ("price", true) => query.OrderByDescending(product => product.Price).ThenBy(product => product.Id),
+            ("category", false) => query.OrderBy(product => product.CategorySlug).ThenBy(product => product.Id),
+            ("category", true) => query.OrderByDescending(product => product.CategorySlug).ThenBy(product => product.Id),
+            ("badge", false) => query.OrderBy(product => product.Badge).ThenBy(product => product.Id),
+            ("badge", true) => query.OrderByDescending(product => product.Badge).ThenBy(product => product.Id),
+            ("id", true) => query.OrderByDescending(product => product.Id),
+            _ => query.OrderBy(product => product.Id)
+        };
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(ProductProjection)
+            .ToListAsync(cancellationToken);
+
+        return new PagedResultDto<ProductDto>(items, page, pageSize, totalCount);
     }
 
     public async Task<IReadOnlyList<ProductDto>> GetFeaturedAsync(CancellationToken cancellationToken)

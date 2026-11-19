@@ -1,0 +1,32 @@
+@page "/Account/Login"
+@model YaaraFramesGifts.Admin.Pages.Account.LoginModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Administrator sign in</title>
+    <link rel="stylesheet" href="/app.css" />
+</head>
+<body class="login-page">
+    <main class="login-card">
+        <p class="eyebrow">YAARA FRAMES &amp; GIFTS</p>
+        <h1>Administrator sign in</h1>
+        <p class="muted">Sign in with an authorized administrator account.</p>
+        <form method="post">
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="validation-message"></div>
+            <label asp-for="Username"></label>
+            <input asp-for="Username" autocomplete="username" />
+            <span asp-validation-for="Username" class="validation-message"></span>
+            <label asp-for="Password"></label>
+            <input asp-for="Password" autocomplete="current-password" />
+            <span asp-validation-for="Password" class="validation-message"></span>
+            <button type="submit" class="primary-button">Sign in</button>
+        </form>
+    </main>
+</body>
+</html>

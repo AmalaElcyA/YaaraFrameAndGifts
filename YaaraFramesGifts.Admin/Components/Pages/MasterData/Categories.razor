@@ -1,0 +1,401 @@
+@page "/master-data/categories"
+@inject AdminApiClient Api
+
+<PageTitle>Categories · Yaara Admin</PageTitle>
+
+<div class="page-heading">
+    <div>
+        <p class="eyebrow">MASTER DATA</p>
+        <h1>Categories</h1>
+        <p class="muted">Organize the product catalog by storefront category.</p>
+    </div>
+    <button class="primary-button" type="button" @onclick="StartCreate">Add category</button>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <div class="notice notice-error" role="alert">@errorMessage</div>
+}
+@if (!string.IsNullOrWhiteSpace(successMessage))
+{
+    <div class="notice notice-success" role="status">@successMessage</div>
+}
+
+<MasterDataTable TItem="CategoryDto"
+                 Items="@(result?.Items ?? emptyItems)"
+                 IsLoading="isLoading"
+                 SearchText="searchText"
+                 SearchTextChanged="SetSearchText"
+                 OnSearch="SearchAsync"
+                 Page="page"
+                 TotalPages="@(result?.TotalPages ?? 0)"
+                 TotalCount="@(result?.TotalCount ?? 0)"
+                 PageSize="pageSize"
+                 OnPageSizeChanged="ChangePageSizeAsync"
+                 OnPreviousPage="PreviousPageAsync"
+                 OnNextPage="NextPageAsync">
+    <Toolbar>
+        <div class="table-actions">
+            <label for="category-sort">Sort by</label>
+            <select id="category-sort" value="@sortBy" @onchange="ChangeSortAsync">
+                <option value="name">Name</option>
+                <option value="slug">Slug</option>
+            </select>
+            <button type="button" class="icon-button" title="Toggle sort direction"
+                    @onclick="ToggleSortAsync">@(descending ? "Z–A" : "A–Z")</button>
+        </div>
+    </Toolbar>
+    <HeaderTemplate>
+        <tr>
+            <th>Category</th>
+            <th>Slug</th>
+            <th>Description</th>
+            <th>Icon</th>
+            <th class="actions-column">Actions</th>
+        </tr>
+    </HeaderTemplate>
+    <RowTemplate Context="category">
+        <tr>
+            <td><strong>@category.Name</strong></td>
+            <td><span class="code-chip">@category.Slug</span></td>
+            <td class="truncate-cell">@(category.Description ?? "—")</td>
+            <td>@(category.Icon ?? "—")</td>
+            <td class="row-actions">
+                <button class="text-button" type="button" @onclick="() => ShowDetails(category)">View</button>
+                <button class="text-button" type="button" @onclick="() => StartEdit(category)">Edit</button>
+                <button class="text-button danger-text" type="button" @onclick="() => AskDelete(category)">Delete</button>
+            </td>
+        </tr>
+    </RowTemplate>
+</MasterDataTable>
+
+@if (showEditor)
+{
+    <section class="panel editor-panel">
+        <div class="panel-heading">
+            <div>
+                <p class="eyebrow">CATEGORY</p>
+                <h2>@(isNew ? "Add category" : "Edit category")</h2>
+            </div>
+            <button class="icon-button" type="button" @onclick="CloseEditor" aria-label="Close">×</button>
+        </div>
+        <EditForm Model="form" OnValidSubmit="SaveAsync">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <div class="form-grid">
+                <div class="form-field">
+                    <label for="category-slug">Slug</label>
+                    <InputText id="category-slug" @bind-Value="form.Slug" disabled="@(!isNew)" />
+                    <ValidationMessage For="@(() => form.Slug)" />
+                    @if (!isNew)
+                    {
+                        <small>The slug is the category key and cannot be changed here.</small>
+                    }
+                </div>
+                <div class="form-field">
+                    <label for="category-name">Name</label>
+                    <InputText id="category-name" @bind-Value="form.Name" />
+                    <ValidationMessage For="@(() => form.Name)" />
+                </div>
+                <div class="form-field form-field-wide">
+                    <label for="category-description">Description</label>
+                    <InputTextArea id="category-description" @bind-Value="form.Description" />
+                    <ValidationMessage For="@(() => form.Description)" />
+                </div>
+                <div class="form-field">
+                    <label for="category-icon">Icon identifier</label>
+                    <InputText id="category-icon" @bind-Value="form.Icon" />
+                    <ValidationMessage For="@(() => form.Icon)" />
+                </div>
+                <div class="form-field">
+                    <label for="category-accent">Accent color</label>
+                    <InputText id="category-accent" @bind-Value="form.AccentColor" placeholder="#B86F68" />
+                    <ValidationMessage For="@(() => form.AccentColor)" />
+                </div>
+            </div>
+            <div class="form-actions">
+                <button class="secondary-button" type="button" @onclick="CloseEditor">Cancel</button>
+                <button class="primary-button" type="submit" disabled="@isSaving">
+                    @(isSaving ? "Saving..." : "Save category")
+                </button>
+            </div>
+        </EditForm>
+    </section>
+}
+
+@if (details is not null)
+{
+    <section class="panel detail-panel">
+        <div class="panel-heading">
+            <div>
+                <p class="eyebrow">CATEGORY DETAILS</p>
+                <h2>@details.Name</h2>
+            </div>
+            <button class="icon-button" type="button" @onclick="CloseDetails" aria-label="Close">×</button>
+        </div>
+        <dl class="detail-grid">
+            <dt>Slug</dt><dd>@details.Slug</dd>
+            <dt>Description</dt><dd>@(details.Description ?? "—")</dd>
+            <dt>Icon</dt><dd>@(details.Icon ?? "—")</dd>
+            <dt>Accent color</dt><dd>@(details.AccentColor ?? "—")</dd>
+            <dt>Status</dt><dd>No active/inactive field exists for categories.</dd>
+        </dl>
+    </section>
+}
+
+@if (deleteTarget is not null)
+{
+    <div class="confirm-overlay" role="presentation">
+        <section class="confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="delete-title">
+            <h2 id="delete-title">Delete category?</h2>
+            <p><strong>@deleteTarget.Name</strong> will be permanently deleted if no products depend on it.</p>
+            <div class="form-actions">
+                <button class="secondary-button" type="button" @onclick="CancelDelete">Cancel</button>
+                <button class="danger-button" type="button" disabled="@isSaving" @onclick="ConfirmDeleteAsync">
+                    @(isSaving ? "Deleting..." : "Delete category")
+                </button>
+            </div>
+        </section>
+    </div>
+}
+
+@code {
+    private readonly IReadOnlyList<CategoryDto> emptyItems = Array.Empty<CategoryDto>();
+    private PagedResultDto<CategoryDto>? result;
+    private CategoryForm form = new();
+    private CategoryDto? details;
+    private CategoryDto? deleteTarget;
+    private bool isLoading;
+    private bool isSaving;
+    private bool showEditor;
+    private bool isNew;
+    private bool descending;
+    private int page = 1;
+    private int pageSize = 20;
+    private string sortBy = "name";
+    private string searchText = string.Empty;
+    private string? errorMessage;
+    private string? successMessage;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+        try
+        {
+            result = await Api.GetCategoriesAsync(searchText, page, pageSize, sortBy, descending);
+        }
+        catch (AdminApiException exception)
+        {
+            errorMessage = exception.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task SearchAsync()
+    {
+        page = 1;
+        successMessage = null;
+        await LoadAsync();
+    }
+
+    private Task SetSearchText(string value)
+    {
+        searchText = value;
+        return Task.CompletedTask;
+    }
+
+    private async Task ChangeSortAsync(ChangeEventArgs args)
+    {
+        sortBy = args.Value?.ToString() ?? "name";
+        page = 1;
+        await LoadAsync();
+    }
+
+    private async Task ToggleSortAsync()
+    {
+        descending = !descending;
+        await LoadAsync();
+    }
+
+    private async Task ChangePageSizeAsync(int value)
+    {
+        pageSize = value;
+        page = 1;
+        await LoadAsync();
+    }
+
+    private async Task PreviousPageAsync()
+    {
+        if (page > 1)
+        {
+            page--;
+            await LoadAsync();
+        }
+    }
+
+    private async Task NextPageAsync()
+    {
+        if (result is not null && page < result.TotalPages)
+        {
+            page++;
+            await LoadAsync();
+        }
+    }
+
+    private void StartCreate()
+    {
+        details = null;
+        deleteTarget = null;
+        form = new CategoryForm();
+        isNew = true;
+        showEditor = true;
+        errorMessage = null;
+        successMessage = null;
+    }
+
+    private void StartEdit(CategoryDto category)
+    {
+        details = null;
+        deleteTarget = null;
+        form = new CategoryForm
+        {
+            Slug = category.Slug,
+            Name = category.Name,
+            Description = category.Description ?? string.Empty,
+            Icon = category.Icon ?? string.Empty,
+            AccentColor = category.AccentColor ?? string.Empty
+        };
+        isNew = false;
+        showEditor = true;
+        errorMessage = null;
+        successMessage = null;
+    }
+
+    private void ShowDetails(CategoryDto category)
+    {
+        CloseEditor();
+        details = category;
+        errorMessage = null;
+    }
+
+    private void AskDelete(CategoryDto category)
+    {
+        deleteTarget = category;
+        details = null;
+        showEditor = false;
+        errorMessage = null;
+        successMessage = null;
+    }
+
+    private async Task SaveAsync()
+    {
+        isSaving = true;
+        errorMessage = null;
+        successMessage = null;
+        try
+        {
+            if (isNew)
+            {
+                await Api.CreateCategoryAsync(new CreateCategoryRequest
+                {
+                    Slug = form.Slug,
+                    Name = form.Name,
+                    Description = NullIfEmpty(form.Description),
+                    Icon = NullIfEmpty(form.Icon),
+                    AccentColor = NullIfEmpty(form.AccentColor)
+                });
+                successMessage = "Category created.";
+            }
+            else
+            {
+                await Api.UpdateCategoryAsync(form.Slug, new UpdateCategoryRequest
+                {
+                    Name = form.Name,
+                    Description = NullIfEmpty(form.Description),
+                    Icon = NullIfEmpty(form.Icon),
+                    AccentColor = NullIfEmpty(form.AccentColor)
+                });
+                successMessage = "Category updated.";
+            }
+
+            showEditor = false;
+            await LoadAsync();
+        }
+        catch (AdminApiException exception)
+        {
+            errorMessage = FormatError(exception);
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (deleteTarget is null)
+        {
+            return;
+        }
+
+        isSaving = true;
+        errorMessage = null;
+        successMessage = null;
+        try
+        {
+            await Api.DeleteCategoryAsync(deleteTarget.Slug);
+            deleteTarget = null;
+            successMessage = "Category deleted.";
+            await LoadAsync();
+        }
+        catch (AdminApiException exception)
+        {
+            errorMessage = FormatError(exception);
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void CloseEditor() => showEditor = false;
+    private void CloseDetails() => details = null;
+    private void CancelDelete() => deleteTarget = null;
+
+    private static string? NullIfEmpty(string value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string FormatError(AdminApiException exception)
+    {
+        if (exception.Errors is null || exception.Errors.Count == 0)
+        {
+            return exception.Message;
+        }
+
+        return $"{exception.Message} {string.Join(" ", exception.Errors.Values.SelectMany(messages => messages))}";
+    }
+
+    private sealed class CategoryForm
+    {
+        [Required, StringLength(64, MinimumLength = 1)]
+        public string Slug { get; set; } = string.Empty;
+
+        [Required, StringLength(120, MinimumLength = 1)]
+        public string Name { get; set; } = string.Empty;
+
+        [StringLength(300)]
+        public string Description { get; set; } = string.Empty;
+
+        [StringLength(32)]
+        public string Icon { get; set; } = string.Empty;
+
+        [StringLength(16)]
+        public string AccentColor { get; set; } = string.Empty;
+    }
+}

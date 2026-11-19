@@ -1,0 +1,465 @@
+@page "/master-data/products"
+@inject AdminApiClient Api
+
+<PageTitle>Products · Yaara Admin</PageTitle>
+
+<div class="page-heading">
+    <div>
+        <p class="eyebrow">MASTER DATA</p>
+        <h1>Products</h1>
+        <p class="muted">Maintain the products shown in the storefront.</p>
+    </div>
+    <button class="primary-button" type="button" @onclick="StartCreate">Add product</button>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <div class="notice notice-error" role="alert">@errorMessage</div>
+}
+@if (!string.IsNullOrWhiteSpace(successMessage))
+{
+    <div class="notice notice-success" role="status">@successMessage</div>
+}
+
+<MasterDataTable TItem="ProductDto"
+                 Items="@(result?.Items ?? emptyItems)"
+                 IsLoading="isLoading"
+                 SearchText="searchText"
+                 SearchTextChanged="SetSearchText"
+                 OnSearch="SearchAsync"
+                 Page="page"
+                 TotalPages="@(result?.TotalPages ?? 0)"
+                 TotalCount="@(result?.TotalCount ?? 0)"
+                 PageSize="pageSize"
+                 OnPageSizeChanged="ChangePageSizeAsync"
+                 OnPreviousPage="PreviousPageAsync"
+                 OnNextPage="NextPageAsync">
+    <Toolbar>
+        <div class="table-actions">
+            <label for="product-sort">Sort by</label>
+            <select id="product-sort" value="@sortBy" @onchange="ChangeSortAsync">
+                <option value="id">ID</option>
+                <option value="name">Name</option>
+                <option value="price">Price</option>
+                <option value="category">Category</option>
+                <option value="badge">Badge</option>
+            </select>
+            <button type="button" class="icon-button" title="Toggle sort direction"
+                    @onclick="ToggleSortAsync">@(descending ? "Descending" : "Ascending")</button>
+        </div>
+    </Toolbar>
+    <HeaderTemplate>
+        <tr>
+            <th>ID</th>
+            <th>Product</th>
+            <th>Category</th>
+            <th>Price</th>
+            <th>Badge</th>
+            <th>Personalized</th>
+            <th class="actions-column">Actions</th>
+        </tr>
+    </HeaderTemplate>
+    <RowTemplate Context="product">
+        <tr>
+            <td><span class="code-chip">#@product.Id</span></td>
+            <td><strong>@product.Name</strong></td>
+            <td>@product.Category.Name</td>
+            <td>₹@product.Price.ToString("N2")</td>
+            <td>@(product.Badge ?? "—")</td>
+            <td>@(product.IsPersonalized ? "Yes" : "No")</td>
+            <td class="row-actions">
+                <button class="text-button" type="button" @onclick="() => ShowDetails(product)">View</button>
+                <button class="text-button" type="button" @onclick="() => StartEdit(product)">Edit</button>
+                <button class="text-button danger-text" type="button" @onclick="() => AskDelete(product)">Delete</button>
+            </td>
+        </tr>
+    </RowTemplate>
+</MasterDataTable>
+
+@if (showEditor)
+{
+    <section class="panel editor-panel">
+        <div class="panel-heading">
+            <div>
+                <p class="eyebrow">PRODUCT</p>
+                <h2>@(isNew ? "Add product" : "Edit product")</h2>
+            </div>
+            <button class="icon-button" type="button" @onclick="CloseEditor" aria-label="Close">×</button>
+        </div>
+        <EditForm Model="form" OnValidSubmit="SaveAsync">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <div class="form-grid">
+                <div class="form-field">
+                    <label for="product-name">Name</label>
+                    <InputText id="product-name" @bind-Value="form.Name" />
+                    <ValidationMessage For="@(() => form.Name)" />
+                </div>
+                <div class="form-field">
+                    <label for="product-category">Category</label>
+                    <InputSelect id="product-category" @bind-Value="form.CategorySlug">
+                        <option value="">Select a category</option>
+                        @foreach (var category in categories)
+                        {
+                            <option value="@category.Slug">@category.Name</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => form.CategorySlug)" />
+                </div>
+                <div class="form-field form-field-wide">
+                    <label for="product-description">Description</label>
+                    <InputTextArea id="product-description" @bind-Value="form.Description" />
+                    <ValidationMessage For="@(() => form.Description)" />
+                </div>
+                <div class="form-field">
+                    <label for="product-price">Price (₹)</label>
+                    <InputNumber id="product-price" @bind-Value="form.Price" step="0.01" min="0.01" />
+                    <ValidationMessage For="@(() => form.Price)" />
+                </div>
+                <div class="form-field">
+                    <label for="product-badge">Badge</label>
+                    <InputSelect id="product-badge" @bind-Value="form.Badge">
+                        <option value="">No badge</option>
+                        <option value="New">New</option>
+                        <option value="Popular">Popular</option>
+                        <option value="Recommended">Recommended</option>
+                    </InputSelect>
+                    <ValidationMessage For="@(() => form.Badge)" />
+                </div>
+                <div class="form-field form-field-wide">
+                    <label for="product-image">Image URL</label>
+                    <InputText id="product-image" @bind-Value="form.ImageUrl" type="url" />
+                    <ValidationMessage For="@(() => form.ImageUrl)" />
+                </div>
+                <div class="form-field checkbox-field">
+                    <InputCheckbox id="product-personalized" @bind-Value="form.IsPersonalized" />
+                    <label for="product-personalized">Can be personalized</label>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button class="secondary-button" type="button" @onclick="CloseEditor">Cancel</button>
+                <button class="primary-button" type="submit" disabled="@isSaving">
+                    @(isSaving ? "Saving..." : "Save product")
+                </button>
+            </div>
+        </EditForm>
+    </section>
+}
+
+@if (details is not null)
+{
+    <section class="panel detail-panel">
+        <div class="panel-heading">
+            <div>
+                <p class="eyebrow">PRODUCT DETAILS</p>
+                <h2>@details.Name</h2>
+            </div>
+            <button class="icon-button" type="button" @onclick="CloseDetails" aria-label="Close">×</button>
+        </div>
+        <dl class="detail-grid">
+            <dt>ID</dt><dd>@details.Id</dd>
+            <dt>Description</dt><dd>@details.Description</dd>
+            <dt>Price</dt><dd>₹@details.Price.ToString("N2")</dd>
+            <dt>Category</dt><dd>@details.Category.Name (@details.CategorySlug)</dd>
+            <dt>Image URL</dt><dd><a href="@details.ImageUrl" target="_blank" rel="noopener noreferrer">@details.ImageUrl</a></dd>
+            <dt>Badge</dt><dd>@(details.Badge ?? "—")</dd>
+            <dt>Personalized</dt><dd>@(details.IsPersonalized ? "Yes" : "No")</dd>
+            <dt>Status</dt><dd>No persisted active/inactive field exists for products.</dd>
+        </dl>
+    </section>
+}
+
+@if (deleteTarget is not null)
+{
+    <div class="confirm-overlay" role="presentation">
+        <section class="confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="delete-title">
+            <h2 id="delete-title">Delete product?</h2>
+            <p><strong>@deleteTarget.Name</strong> will be permanently deleted if no cart items depend on it.</p>
+            <div class="form-actions">
+                <button class="secondary-button" type="button" @onclick="CancelDelete">Cancel</button>
+                <button class="danger-button" type="button" disabled="@isSaving" @onclick="ConfirmDeleteAsync">
+                    @(isSaving ? "Deleting..." : "Delete product")
+                </button>
+            </div>
+        </section>
+    </div>
+}
+
+@code {
+    private readonly IReadOnlyList<ProductDto> emptyItems = Array.Empty<ProductDto>();
+    private PagedResultDto<ProductDto>? result;
+    private IReadOnlyList<CategoryDto> categories = Array.Empty<CategoryDto>();
+    private ProductForm form = new();
+    private ProductDto? details;
+    private ProductDto? deleteTarget;
+    private bool isLoading;
+    private bool isSaving;
+    private bool showEditor;
+    private bool isNew;
+    private bool descending;
+    private int page = 1;
+    private int pageSize = 20;
+    private string sortBy = "id";
+    private string searchText = string.Empty;
+    private string? errorMessage;
+    private string? successMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        string? categoryLoadError = null;
+        try
+        {
+            categories = await Api.GetCategoryLookupsAsync();
+        }
+        catch (AdminApiException exception)
+        {
+            categoryLoadError = exception.Message;
+        }
+
+        await LoadAsync();
+        if (categoryLoadError is not null)
+        {
+            errorMessage = categoryLoadError;
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+        try
+        {
+            result = await Api.GetProductsAsync(searchText, page, pageSize, sortBy, descending);
+        }
+        catch (AdminApiException exception)
+        {
+            errorMessage = exception.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task SearchAsync()
+    {
+        page = 1;
+        successMessage = null;
+        await LoadAsync();
+    }
+
+    private Task SetSearchText(string value)
+    {
+        searchText = value;
+        return Task.CompletedTask;
+    }
+
+    private async Task ChangeSortAsync(ChangeEventArgs args)
+    {
+        sortBy = args.Value?.ToString() ?? "id";
+        page = 1;
+        await LoadAsync();
+    }
+
+    private async Task ToggleSortAsync()
+    {
+        descending = !descending;
+        await LoadAsync();
+    }
+
+    private async Task ChangePageSizeAsync(int value)
+    {
+        pageSize = value;
+        page = 1;
+        await LoadAsync();
+    }
+
+    private async Task PreviousPageAsync()
+    {
+        if (page > 1)
+        {
+            page--;
+            await LoadAsync();
+        }
+    }
+
+    private async Task NextPageAsync()
+    {
+        if (result is not null && page < result.TotalPages)
+        {
+            page++;
+            await LoadAsync();
+        }
+    }
+
+    private void StartCreate()
+    {
+        details = null;
+        deleteTarget = null;
+        form = new ProductForm();
+        isNew = true;
+        showEditor = true;
+        errorMessage = null;
+        successMessage = null;
+    }
+
+    private void StartEdit(ProductDto product)
+    {
+        details = null;
+        deleteTarget = null;
+        editingProductId = product.Id;
+        form = new ProductForm
+        {
+            Name = product.Name,
+            Description = product.Description,
+            Price = product.Price,
+            ImageUrl = product.ImageUrl,
+            CategorySlug = product.CategorySlug,
+            Badge = product.Badge ?? string.Empty,
+            IsPersonalized = product.IsPersonalized
+        };
+        isNew = false;
+        showEditor = true;
+        errorMessage = null;
+        successMessage = null;
+    }
+
+    private void ShowDetails(ProductDto product)
+    {
+        CloseEditor();
+        details = product;
+        errorMessage = null;
+    }
+
+    private void AskDelete(ProductDto product)
+    {
+        deleteTarget = product;
+        details = null;
+        showEditor = false;
+        errorMessage = null;
+        successMessage = null;
+    }
+
+    private async Task SaveAsync()
+    {
+        isSaving = true;
+        errorMessage = null;
+        successMessage = null;
+        try
+        {
+            if (isNew)
+            {
+                await Api.CreateProductAsync(ToCreateRequest());
+                successMessage = "Product created.";
+            }
+            else
+            {
+                await Api.UpdateProductAsync(editingProductId, ToUpdateRequest());
+                successMessage = "Product updated.";
+            }
+
+            showEditor = false;
+            await LoadAsync();
+        }
+        catch (AdminApiException exception)
+        {
+            errorMessage = FormatError(exception);
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private int editingProductId;
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (deleteTarget is null)
+        {
+            return;
+        }
+
+        isSaving = true;
+        errorMessage = null;
+        successMessage = null;
+        try
+        {
+            await Api.DeleteProductAsync(deleteTarget.Id);
+            deleteTarget = null;
+            successMessage = "Product deleted.";
+            await LoadAsync();
+        }
+        catch (AdminApiException exception)
+        {
+            errorMessage = FormatError(exception);
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private CreateProductRequest ToCreateRequest() => new()
+    {
+        Name = form.Name,
+        Description = form.Description,
+        Price = form.Price,
+        ImageUrl = form.ImageUrl,
+        CategorySlug = form.CategorySlug,
+        Badge = NullIfEmpty(form.Badge),
+        IsPersonalized = form.IsPersonalized
+    };
+
+    private UpdateProductRequest ToUpdateRequest() => new()
+    {
+        Name = form.Name,
+        Description = form.Description,
+        Price = form.Price,
+        ImageUrl = form.ImageUrl,
+        CategorySlug = form.CategorySlug,
+        Badge = NullIfEmpty(form.Badge),
+        IsPersonalized = form.IsPersonalized
+    };
+
+    private void CloseEditor() => showEditor = false;
+    private void CloseDetails() => details = null;
+    private void CancelDelete() => deleteTarget = null;
+
+    private static string? NullIfEmpty(string value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string FormatError(AdminApiException exception)
+    {
+        if (exception.Errors is null || exception.Errors.Count == 0)
+        {
+            return exception.Message;
+        }
+
+        return $"{exception.Message} {string.Join(" ", exception.Errors.Values.SelectMany(messages => messages))}";
+    }
+
+    private sealed class ProductForm
+    {
+        [Required, StringLength(160, MinimumLength = 1)]
+        public string Name { get; set; } = string.Empty;
+
+        [Required, StringLength(1000, MinimumLength = 1)]
+        public string Description { get; set; } = string.Empty;
+
+        [Range(typeof(decimal), "0.01", "9999999999999999.99")]
+        public decimal Price { get; set; }
+
+        [Required, Url, StringLength(500, MinimumLength = 1)]
+        public string ImageUrl { get; set; } = string.Empty;
+
+        [Required, StringLength(64, MinimumLength = 1)]
+        public string CategorySlug { get; set; } = string.Empty;
+
+        [StringLength(32)]
+        [RegularExpression("^(New|Popular|Recommended)?$", ErrorMessage = "Choose a valid product badge.")]
+        public string Badge { get; set; } = string.Empty;
+
+        public bool IsPersonalized { get; set; }
+    }
+}

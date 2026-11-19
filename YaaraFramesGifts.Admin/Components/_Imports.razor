@@ -1,0 +1,19 @@
+﻿@using System.Net.Http
+@using System.Net.Http.Json
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Authorization
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+@using Microsoft.JSInterop
+@using YaaraFramesGifts.Admin
+@using YaaraFramesGifts.Admin.Components
+@using YaaraFramesGifts.Admin.Components.Layout
+@using YaaraFramesGifts.Admin.Components.Shared
+@using YaaraFramesGifts.Admin.Models
+@using YaaraFramesGifts.Admin.Services
+@using YaaraFramesGifts.DTOs
+@attribute [Authorize(Roles = "Admin")]

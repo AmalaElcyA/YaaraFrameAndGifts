@@ -1,0 +1,91 @@
+@typeparam TItem
+
+<section class="panel">
+    <div class="table-toolbar">
+        <div class="search-control">
+            <label for="master-search">Search records</label>
+            <div class="search-row">
+                <input id="master-search" value="@SearchText" @oninput="HandleSearchInput"
+                       @onkeydown="HandleSearchKeyDown" placeholder="Search..." />
+                <button class="secondary-button" type="button" @onclick="OnSearch">Search</button>
+            </div>
+        </div>
+        @Toolbar
+    </div>
+
+    @if (IsLoading)
+    {
+        <div class="loading-state" role="status"><span class="spinner"></span>Loading records...</div>
+    }
+    else if (Items.Count == 0)
+    {
+        <div class="empty-state">No records match your search.</div>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table>
+                <thead>@HeaderTemplate</thead>
+                <tbody>
+                    @foreach (var item in Items)
+                    {
+                        @RowTemplate(item)
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    <div class="table-footer">
+        <span>@TotalCount record(s) · Page @Page of @Math.Max(TotalPages, 1)</span>
+        <div class="pagination-controls">
+            <label for="page-size">Rows</label>
+            <select id="page-size" value="@PageSize" @onchange="HandlePageSizeChange">
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+            </select>
+            <button class="secondary-button" type="button" disabled="@(Page <= 1 || IsLoading)"
+                    @onclick="OnPreviousPage">Previous</button>
+            <button class="secondary-button" type="button"
+                    disabled="@(Page >= TotalPages || IsLoading)" @onclick="OnNextPage">Next</button>
+        </div>
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<TItem> Items { get; set; } = [];
+    [Parameter, EditorRequired] public RenderFragment HeaderTemplate { get; set; } = default!;
+    [Parameter, EditorRequired] public RenderFragment<TItem> RowTemplate { get; set; } = default!;
+    [Parameter] public RenderFragment? Toolbar { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public string SearchText { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> SearchTextChanged { get; set; }
+    [Parameter] public EventCallback OnSearch { get; set; }
+    [Parameter] public int Page { get; set; }
+    [Parameter] public int TotalPages { get; set; }
+    [Parameter] public int TotalCount { get; set; }
+    [Parameter] public int PageSize { get; set; }
+    [Parameter] public EventCallback<int> OnPageSizeChanged { get; set; }
+    [Parameter] public EventCallback OnPreviousPage { get; set; }
+    [Parameter] public EventCallback OnNextPage { get; set; }
+
+    private async Task HandleSearchInput(ChangeEventArgs args) =>
+        await SearchTextChanged.InvokeAsync(args.Value?.ToString() ?? string.Empty);
+
+    private async Task HandleSearchKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+        {
+            await OnSearch.InvokeAsync();
+        }
+    }
+
+    private async Task HandlePageSizeChange(ChangeEventArgs args)
+    {
+        if (int.TryParse(args.Value?.ToString(), out var pageSize))
+        {
+            await OnPageSizeChanged.InvokeAsync(pageSize);
+        }
+    }
+}

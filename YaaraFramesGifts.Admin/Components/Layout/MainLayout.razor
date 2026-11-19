@@ -1,0 +1,42 @@
+﻿@inherits LayoutComponentBase
+
+<div class="admin-shell">
+    <aside class="sidebar">
+        <a class="brand" href="/">
+            <span class="brand-mark">Y</span>
+            <span>Yaara <strong>Admin</strong></span>
+        </a>
+        <div class="nav-caption">MANAGEMENT</div>
+        <nav class="side-nav" aria-label="Master data">
+            @foreach (var section in MasterDataSections.All)
+            {
+                <NavLink href="@section.Route" Match="NavLinkMatch.Prefix">
+                    <span class="nav-icon">@section.Code</span> @section.Name
+                </NavLink>
+            }
+        </nav>
+        <div class="sidebar-footer">
+            <span class="status-dot"></span>
+            Connected to catalog API
+        </div>
+    </aside>
+
+    <div class="main-column">
+        <header class="topbar">
+            <div class="breadcrumb">Yaara Frames &amp; Gifts <span>/</span> Administration</div>
+            <form method="post" action="/Account/Logout">
+                <AntiforgeryToken />
+                <button type="submit" class="logout-button">Sign out</button>
+            </form>
+        </header>
+        <main class="content">
+            @Body
+        </main>
+    </div>
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">×</span>
+</div>

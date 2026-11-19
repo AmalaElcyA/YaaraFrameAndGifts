@@ -1,0 +1,45 @@
+
+# Build output
+[Bb]in/
+[Oo]bj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio Code
+.vscode/
+
+# Rider
+.idea/
+
+# NuGet
+*.nupkg
+.nuget/
+
+# Logs
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Publish output
+publish/
+artifacts/
+
+# Docker
+docker-compose.override.yml
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Temporary files
+*.tmp
+*.bak

@@ -1,0 +1,34 @@
+﻿@page "/"
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Admin dashboard</PageTitle>
+
+<div class="page-heading">
+    <div>
+        <p class="eyebrow">OVERVIEW</p>
+        <h1>Welcome, @(fullName ?? "Administrator")</h1>
+        <p class="muted">Manage the catalog data used by the Yaara Frames &amp; Gifts storefront.</p>
+    </div>
+
+    @code {
+        private string? fullName;
+
+        protected override async Task OnInitializedAsync()
+        {
+            var state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            fullName = state.User.FindFirst(System.Security.Claims.ClaimTypes.GivenName)?.Value;
+        }
+    }
+</div>
+
+<div class="dashboard-grid">
+    @foreach (var section in MasterDataSections.All)
+    {
+        <a class="dashboard-card" href="@section.Route">
+            <span class="card-icon">@section.Code</span>
+            <h2>@section.Name</h2>
+            <p>@section.Description</p>
+            <span class="card-link">Open @section.Name.ToLowerInvariant() <span aria-hidden="true">→</span></span>
+        </a>
+    }
+</div>
